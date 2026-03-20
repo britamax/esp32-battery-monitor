@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattAnalyzer — System</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080e14;--panel:#0d1821;--card:#111e2b;--border:#1d3148;--border2:#243d58;--accent:#00d4ff;--accent2:#00ff9d;--warn:#f59e0b;--danger:#ff4d6d;--purple:#a78bfa;--text:#e2eaf2;--dim:#4a6580;--dim2:#6b8299;--mono:'JetBrains Mono',monospace;--sans:'Rajdhani',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;background-image:radial-gradient(ellipse 800px 400px at 80% 20%,rgba(167,139,250,.03) 0%,transparent 70%)}
+nav{background:rgba(13,24,33,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent);letter-spacing:2px}
+.nav-tabs{display:flex;gap:2px}
+.tab{padding:7px 16px;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--dim2);transition:all .2s;letter-spacing:.5px;text-decoration:none;display:inline-block}
+.tab:hover{background:rgba(0,212,255,.08);color:var(--text)}
+.tab.active{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.wrap{padding:20px 24px;max-width:1100px;margin:0 auto}
+.refresh-info{text-align:right;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:10px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:800px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.grid-3,.grid-2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--border2)}
+.card.c-accent::before{background:var(--accent)}
+.card.c-green::before{background:var(--accent2)}
+.card.c-warn::before{background:var(--warn)}
+.card.c-purple::before{background:var(--purple)}
+.card.c-danger::before{background:var(--danger)}
+.card-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px}
+.val-big{font-family:var(--mono);font-size:32px;font-weight:300;color:var(--text);line-height:1}
+.val-unit{font-family:var(--mono);font-size:12px;color:var(--dim2);margin-left:3px}
+.val-sub{font-size:11px;color:var(--dim2);margin-top:5px;font-family:var(--mono)}
+.bar-track{height:5px;background:rgba(0,0,0,.4);border-radius:3px;margin-top:10px;overflow:hidden;border:1px solid var(--border)}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.bar-accent{background:var(--accent)}
+.bar-green{background:var(--accent2)}
+.bar-warn{background:var(--warn)}
+.bar-danger{background:var(--danger)}
+.info-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.info-tbl tr{border-bottom:1px solid var(--border)}
+.info-tbl tr:last-child{border-bottom:none}
+.info-tbl td{padding:8px 0}
+.info-tbl td:first-child{color:var(--dim2);width:110px;font-family:var(--mono);font-size:11px}
+.info-tbl td:last-child{color:var(--text);font-family:var(--mono);font-size:12px}
+.s-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;font-family:var(--mono)}
+.s-ok{background:rgba(0,255,157,.1);color:var(--accent2);border:1px solid rgba(0,255,157,.2)}
+.s-warn{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.2)}
+.s-err{background:rgba(255,77,109,.1);color:var(--danger);border:1px solid rgba(255,77,109,.2)}
+.ota-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px}
+.ota-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.ota-sub{font-size:11px;color:var(--dim2);margin-bottom:16px;font-family:var(--mono)}
+.drop-zone{border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:rgba(0,212,255,.03)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:36px;margin-bottom:8px}
+.drop-text{font-size:13px;color:var(--dim2)}
+.drop-text strong{color:var(--accent)}
+.file-info{display:none;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--accent2);padding:8px 12px;background:rgba(0,255,157,.05);border-radius:6px;border:1px solid rgba(0,255,157,.15)}
+.progress-wrap{display:none;margin-top:14px}
+.progress-bar{height:8px;background:rgba(0,0,0,.4);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.progress-fill{height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width .3s}
+.progress-text{font-size:11px;color:var(--dim2);margin-top:5px;text-align:center;font-family:var(--mono)}
+.btn-ota{width:100%;margin-top:12px;padding:10px;background:var(--accent);border:none;border-radius:7px;color:#080e14;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:none;font-family:var(--sans)}
+.btn-ota:hover{background:#33dbff;box-shadow:0 0 16px rgba(0,212,255,.3)}
+.btn-ota:disabled{background:#1a3045;color:var(--dim);cursor:not-allowed}
+.ota-status{display:none;margin-top:10px;padding:10px;border-radius:7px;font-size:13px;font-weight:700;text-align:center;font-family:var(--mono)}
+.action-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.action-row:last-child{border-bottom:none}
+.action-info .al{font-size:13px;font-weight:600}
+.action-info .as{font-size:11px;color:var(--dim2);margin-top:2px}
+.btn-sm{padding:8px 20px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;font-family:var(--sans);border:none}
+.btn-restart{background:rgba(255,77,109,.1);color:var(--danger);border:1px solid rgba(255,77,109,.3)}
+.btn-restart:hover{background:var(--danger);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.05);color:var(--dim2);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--border2);color:var(--text)}
+hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand"><span>⚡</span>BATTANALYZER</div>
+  <div class="nav-tabs">
+    <a class="tab" href="dashboard.html">Dashboard</a>
+    <a class="tab" href="setting.html">Setting</a>
+    <a class="tab active" href="system.html">System</a>
+    <a class="tab" href="log.html">Log</a>
+  </div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--dim2)" id="nav-time">--:--:--</div>
+</nav>
+
+<div class="wrap">
+  <div class="refresh-info">Auto refresh tiap 5 detik ↻</div>
+
+  <!-- Baris 1: RAM, Chip Temp, RSSI -->
+  <div class="grid-3">
+    <div class="card c-accent">
+      <div class="card-label">RAM Bebas</div>
+      <div><span class="val-big" id="ram-free">--</span><span class="val-unit">KB</span></div>
+      <div class="val-sub" id="ram-sub">dari -- KB</div>
+      <div class="bar-track"><div class="bar-fill bar-green" id="ram-bar" style="width:0%"></div></div>
+    </div>
+    <div class="card c-warn">
+      <div class="card-label">Suhu Chip ESP32-C3</div>
+      <div><span class="val-big" id="chip-temp">--</span><span class="val-unit">°C</span></div>
+      <div class="val-sub" id="chip-temp-st">--</div>
+    </div>
+    <div class="card c-green">
+      <div class="card-label">Sinyal WiFi</div>
+      <div><span class="val-big" id="rssi-val">--</span><span class="val-unit">dBm</span></div>
+      <div class="val-sub" id="rssi-st">--</div>
+      <div class="bar-track"><div class="bar-fill bar-green" id="rssi-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Baris 2: CPU, Flash, Uptime -->
+  <div class="grid-3">
+    <div class="card c-purple">
+      <div class="card-label">CPU Frequency</div>
+      <div><span class="val-big" id="cpu-mhz">--</span><span class="val-unit">MHz</span></div>
+      <div class="val-sub">RISC-V ESP32-C3</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Flash OTA Tersedia</div>
+      <div><span class="val-big" id="flash-free">--</span><span class="val-unit">KB</span></div>
+      <div class="val-sub" id="flash-st">--</div>
+    </div>
+    <div class="card c-green">
+      <div class="card-label">Uptime</div>
+      <div class="val-big" style="font-size:24px" id="uptime-val">--:--:--</div>
+      <div class="val-sub" id="uptime-days">-- hari</div>
+    </div>
+  </div>
+
+  <!-- Baris 3: Network + Firmware Info -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-label" style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Info Jaringan</div>
+      <table class="info-tbl">
+        <tr><td>IP Address</td><td style="color:var(--accent)" id="n-ip">--</td></tr>
+        <tr><td>Gateway</td><td id="n-gw">--</td></tr>
+        <tr><td>MAC</td><td id="n-mac">--</td></tr>
+        <tr><td>Hostname</td><td id="n-host">--</td></tr>
+        <tr><td>SSID</td><td id="n-ssid">--</td></tr>
+        <tr><td>LittleFS</td><td id="n-fs">--</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-label" style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Info Firmware</div>
+      <table class="info-tbl">
+        <tr><td>Versi</td><td style="color:var(--accent)" id="f-ver">--</td></tr>
+        <tr><td>Build</td><td style="font-size:10px;color:var(--dim2)" id="f-build">--</td></tr>
+        <tr><td>Chip</td><td id="f-chip">ESP32-C3</td></tr>
+        <tr><td>Flash Total</td><td id="f-flash">--</td></tr>
+        <tr><td>MQTT</td><td id="f-mqtt">--</td></tr>
+        <tr><td>NTP</td><td id="f-ntp">--</td></tr>
+        <tr><td>Waktu</td><td style="font-size:10px" id="f-time">--</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <hr class="div">
+
+  <!-- OTA Update -->
+  <div class="ota-card">
+    <div class="ota-title">🚀 OTA Firmware Update</div>
+    <div class="ota-sub">Upload file <code>.bin</code> — PlatformIO: .pio/build/esp32-c3-supermini/firmware.bin</div>
+    <div class="drop-zone" id="drop-zone" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+      <input type="file" id="ota-file" accept=".bin" onchange="onFileSelect(this)">
+      <div class="drop-icon">💾</div>
+      <div class="drop-text">Drag &amp; drop <strong>firmware.bin</strong> atau klik untuk pilih</div>
+    </div>
+    <div class="file-info" id="file-info"></div>
+    <div class="progress-wrap" id="prog-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      <div class="progress-text" id="prog-text">0%</div>
+    </div>
+    <div class="ota-status" id="ota-status"></div>
+    <button class="btn-ota" id="btn-ota" onclick="doOTA()">✅ Flash Firmware</button>
+  </div>
+
+  <!-- Actions -->
+  <div class="card">
+    <div class="action-row">
+      <div class="action-info"><div class="al">Rollback Firmware</div><div class="as">Kembali ke firmware slot OTA sebelumnya</div></div>
+      <button class="btn-sm" style="background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3)" onclick="doRollback()">↩ Rollback</button>
+    </div>
+    <div class="action-row">
+      <div class="action-info"><div class="al">Restart Perangkat</div><div class="as">Restart ESP32-C3 tanpa menghapus data</div></div>
+      <button class="btn-sm btn-restart" onclick="doRestart()">⚡ Restart</button>
+    </div>
+    <div class="action-row">
+      <div class="action-info"><div class="al">Logout</div><div class="as">Keluar dari sesi ini</div></div>
+      <button class="btn-sm btn-secondary" onclick="doLogout()">🔒 Logout</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function fmtUptime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');}
+function rssiInfo(r){if(r>=-50)return['Sangat Kuat','bar-green'];if(r>=-65)return['Kuat','bar-green'];if(r>=-75)return['Sedang','bar-warn'];if(r>=-85)return['Lemah','bar-warn'];return['Sangat Lemah','bar-danger'];}
+function rssiPct(r){return Math.max(0,Math.min(100,2*(r+100)));}
+function tempInfo(t){if(t<60)return['Normal','s-ok'];if(t<75)return['Hangat','s-warn'];return['Panas!','s-err'];}
+function ramBarClass(pct){if(pct>60)return'bar-green';if(pct>30)return'bar-warn';return'bar-danger';}
+
+function update(){
+  fetch('/api/system').then(r=>r.json()).then(d=>{
+    const ramKB=Math.round(d.ram_free/1024),ramTot=Math.round(d.ram_total/1024);
+    const ramPct=Math.round(d.ram_free/d.ram_total*100);
+    document.getElementById('ram-free').textContent=ramKB;
+    document.getElementById('ram-sub').textContent='dari '+ramTot+' KB total';
+    const rb=document.getElementById('ram-bar');rb.style.width=ramPct+'%';rb.className='bar-fill '+ramBarClass(ramPct);
+    const ct=d.chip_temp.toFixed(1);const[tl,tc]=tempInfo(d.chip_temp);
+    document.getElementById('chip-temp').textContent=ct;
+    document.getElementById('chip-temp-st').innerHTML='<span class="s-badge '+tc+'">'+tl+'</span>';
+    const[rl,rc]=rssiInfo(d.rssi);
+    document.getElementById('rssi-val').textContent=d.rssi;
+    document.getElementById('rssi-st').innerHTML='<span class="s-badge s-ok">'+rl+'</span>';
+    const rb2=document.getElementById('rssi-bar');rb2.style.width=rssiPct(d.rssi)+'%';rb2.className='bar-fill '+rc;
+    document.getElementById('cpu-mhz').textContent=d.cpu_mhz;
+    const fKB=Math.round(d.flash_free/1024);
+    document.getElementById('flash-free').textContent=fKB;
+    document.getElementById('flash-st').textContent=fKB>512?'Cukup untuk OTA':'Perlu perhatian';
+    const s=parseInt(d.uptime)||0;
+    document.getElementById('uptime-val').textContent=fmtUptime(s%86400);
+    document.getElementById('uptime-days').textContent=Math.floor(s/86400)+' hari';
+    document.getElementById('n-ip').textContent=d.ip||'--';
+    document.getElementById('n-gw').textContent=d.gw||'--';
+    document.getElementById('n-mac').textContent=d.mac||'--';
+    document.getElementById('n-host').textContent=d.host||'--';
+    document.getElementById('n-ssid').textContent=d.ssid||'--';
+    document.getElementById('n-fs').textContent=Math.round(d.fs_used/1024)+'KB / '+Math.round(d.fs_total/1024)+'KB';
+    document.getElementById('f-ver').textContent=d.fw_ver||'--';
+    document.getElementById('f-build').textContent=d.fw_build||'--';
+    document.getElementById('f-flash').textContent=Math.round(d.flash_total/1024)+' KB';
+    document.getElementById('f-mqtt').innerHTML=d.mqtt_ok?'<span class="s-badge s-ok">● Connected</span>':'<span class="s-badge s-err">● Disconnected</span>';
+    document.getElementById('f-ntp').innerHTML=d.ntp_sync?'<span class="s-badge s-ok">● Synced</span>':'<span class="s-badge s-err">● Not Synced</span>';
+    document.getElementById('f-time').textContent=d.ntp_time||'--';
+    document.getElementById('nav-time').textContent=d.ntp_time?d.ntp_time.slice(-8):'--:--:--';
+  }).catch(()=>{});
+}
+
+function doRestart(){if(!confirm('Restart perangkat?'))return;fetch('/api/setting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'restart'})}).then(()=>alert('Restart dalam 3 detik...'));}
+function doLogout(){fetch('/api/logout',{method:'POST'}).finally(()=>location.href='/login.html');}
+function doRollback(){if(!confirm('Rollback ke firmware sebelumnya?'))return;fetch('/api/ota/rollback',{method:'POST'}).then(r=>r.json()).then(d=>{alert(d.ok?'Rollback OK! Restart...':('Gagal: '+(d.msg||'Tidak ada firmware lama')));});}
+
+let _otaFile=null;
+function onDrag(e,on){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',on);}
+function onDrop(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setFile(f);}
+function onFileSelect(i){if(i.files[0])setFile(i.files[0]);}
+function setFile(f){
+  if(!f.name.endsWith('.bin')){showOtaSt('✗ File harus .bin',false);return;}
+  _otaFile=f;
+  const info=document.getElementById('file-info');info.style.display='block';info.textContent=f.name+' — '+(f.size/1024).toFixed(1)+' KB';
+  document.getElementById('btn-ota').style.display='block';document.getElementById('ota-status').style.display='none';
+}
+function doOTA(){
+  if(!_otaFile||!confirm('Flash firmware baru?\n\nPerangkat restart otomatis setelah selesai.'))return;
+  const btn=document.getElementById('btn-ota'),wrap=document.getElementById('prog-wrap'),fill=document.getElementById('prog-fill'),txt=document.getElementById('prog-text');
+  btn.disabled=true;btn.textContent='Uploading...';wrap.style.display='block';showOtaSt('',null);
+  const xhr=new XMLHttpRequest();xhr.open('POST','/api/ota',true);
+  xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);fill.style.width=p+'%';txt.textContent=p+'% — '+(e.loaded/1024).toFixed(0)+'/'+(e.total/1024).toFixed(0)+' KB';}};
+  xhr.onload=()=>{btn.disabled=false;btn.textContent='✅ Flash Firmware';if(xhr.status===200){fill.style.width='100%';fill.style.background='var(--accent2)';txt.textContent='100% — Selesai!';showOtaSt('✓ Upload berhasil! Restart dalam 5 detik...',true);btn.style.display='none';setTimeout(()=>location.href='/',8000);}else{showOtaSt('✗ Gagal: '+xhr.responseText,false);}};
+  xhr.onerror=()=>{btn.disabled=false;btn.textContent='✅ Flash Firmware';showOtaSt('✗ Koneksi terputus',false);};
+  const fd=new FormData();fd.append('firmware',_otaFile,_otaFile.name);xhr.send(fd);
+}
+function showOtaSt(msg,ok){const el=document.getElementById('ota-status');if(!msg){el.style.display='none';return;}el.style.display='block';el.style.background=ok?'#052e16':'#2d0a14';el.style.color=ok?'var(--accent2)':'var(--danger)';el.style.border='1px solid '+(ok?'rgba(0,255,157,.3)':'rgba(255,77,109,.3)');el.textContent=msg;}
+
+update();setInterval(update,5000);
+</script>
+</body>
+</html>

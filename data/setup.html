@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattAnalyzer — Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080e14;--card:#0d1821;--border:#1d3148;--accent:#00d4ff;--accent2:#00ff9d;--danger:#ff4d6d;--text:#e2eaf2;--dim:#4a6580;--dim2:#6b8299;--mono:'JetBrains Mono',monospace;--sans:'Rajdhani',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:460px}
+.logo{text-align:center;margin-bottom:24px}
+.logo-icon{font-size:40px;display:block;margin-bottom:8px;filter:drop-shadow(0 0 16px rgba(0,212,255,.4))}
+.logo-title{font-family:var(--mono);font-size:16px;color:var(--accent);letter-spacing:2px}
+.logo-sub{font-size:11px;color:var(--dim2);margin-top:4px}
+h3{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+label{display:block;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);margin-bottom:4px;margin-top:10px}
+input[type=text],input[type=password]{width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.1)}
+.mode-group{display:flex;gap:8px;margin-top:8px}
+.mode-btn{flex:1;padding:9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--dim2);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;font-family:var(--sans)}
+.mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+.scan-list{margin-top:8px;max-height:130px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none;background:#080e14}
+.scan-item{padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;font-size:12px;font-family:var(--mono)}
+.scan-item:last-child{border-bottom:none}
+.scan-item:hover{background:rgba(0,212,255,.05);color:var(--accent)}
+.ip-section{display:none;padding:12px;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--border);margin-top:10px}
+.ip-row{display:flex;gap:8px}
+.ip-row>div{flex:1}
+.btn-save{width:100%;margin-top:20px;padding:12px;background:linear-gradient(135deg,var(--accent),#0099bb);border:none;border-radius:8px;color:#080e14;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px;font-family:var(--sans);box-shadow:0 4px 20px rgba(0,212,255,.2)}
+.btn-save:hover{box-shadow:0 4px 28px rgba(0,212,255,.35)}
+.btn-save:disabled{background:#1a3045;color:var(--dim);cursor:not-allowed}
+.btn-scan{padding:7px 14px;border:1px solid var(--border);background:transparent;color:var(--dim2);border-radius:7px;font-size:12px;cursor:pointer;margin-top:8px;font-family:var(--sans)}
+.btn-scan:hover{border-color:var(--accent);color:var(--accent)}
+.status-box{display:none;margin-top:14px;padding:12px;border-radius:8px;font-size:12px;font-family:var(--mono)}
+.s-ok{background:rgba(0,255,157,.08);color:var(--accent2);border:1px solid rgba(0,255,157,.2)}
+.s-err{background:rgba(255,77,109,.08);color:var(--danger);border:1px solid rgba(255,77,109,.2)}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(8,14,20,.4);border-top-color:rgba(8,14,20,.9);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <span class="logo-icon">⚡</span>
+    <div class="logo-title">BATTANALYZER</div>
+    <div class="logo-sub">Pengaturan Awal Perangkat</div>
+  </div>
+
+  <h3>Nama Perangkat</h3>
+  <label>Device Name</label>
+  <input type="text" id="devname" placeholder="BattAnalyzer" maxlength="24" value="BattAnalyzer">
+
+  <h3>Mode Koneksi</h3>
+  <div class="mode-group">
+    <button class="mode-btn active" id="btn-sta" onclick="setMode('sta')">🌐 WiFi Router</button>
+    <button class="mode-btn" id="btn-ap" onclick="setMode('ap')">📻 Local AP</button>
+  </div>
+
+  <div id="section-sta">
+    <h3>Jaringan WiFi</h3>
+    <button class="btn-scan" id="btn-scan" onclick="scanWifi()">🔍 Scan Jaringan</button>
+    <div class="scan-list" id="scan-list"></div>
+    <label>SSID</label>
+    <input type="text" id="ssid" placeholder="Nama jaringan WiFi">
+    <label>Password</label>
+    <input type="password" id="pass" placeholder="Kata sandi WiFi">
+
+    <h3>Mode IP</h3>
+    <div class="mode-group">
+      <button class="mode-btn active" id="btn-dhcp" onclick="setIP('dhcp')">DHCP (Otomatis)</button>
+      <button class="mode-btn" id="btn-static" onclick="setIP('static')">IP Statis</button>
+    </div>
+    <div class="ip-section" id="ip-section">
+      <div class="ip-row">
+        <div><label>IP Address</label><input type="text" id="ip" placeholder="192.168.1.100"></div>
+        <div><label>Gateway</label><input type="text" id="gw" placeholder="192.168.1.1"></div>
+      </div>
+      <div class="ip-row">
+        <div><label>Subnet</label><input type="text" id="sn" placeholder="255.255.255.0"></div>
+        <div><label>DNS</label><input type="text" id="dns" placeholder="8.8.8.8"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="section-ap" style="display:none">
+    <div class="status-box s-ok" style="display:block;margin-top:12px">
+      <strong>Mode Local AP</strong><br>
+      ESP32-C3 menjadi hotspot sendiri.<br>
+      SSID: <strong>ESP32-BattLab</strong> &nbsp;→&nbsp; Buka: <strong>192.168.4.1</strong>
+    </div>
+  </div>
+
+  <div class="status-box" id="status-box"></div>
+  <button class="btn-save" id="btn-save" onclick="simpan()">Simpan &amp; Mulai</button>
+</div>
+
+<script>
+let _mode='sta',_ip='dhcp';
+function setMode(m){
+  _mode=m;
+  ['sta','ap'].forEach(x=>{document.getElementById('btn-'+x).className='mode-btn'+(m===x?' active':'');});
+  document.getElementById('section-sta').style.display=m==='sta'?'block':'none';
+  document.getElementById('section-ap').style.display=m==='ap'?'block':'none';
+}
+function setIP(m){
+  _ip=m;
+  ['dhcp','static'].forEach(x=>{document.getElementById('btn-'+x).className='mode-btn'+(m===x?' active':'');});
+  document.getElementById('ip-section').style.display=m==='static'?'block':'none';
+}
+function scanWifi(){
+  const btn=document.getElementById('btn-scan');
+  const list=document.getElementById('scan-list');
+  btn.textContent='🔍 Memindai...';btn.disabled=true;
+  list.style.display='block';list.innerHTML='<div class="scan-item" style="color:var(--dim)">Memindai jaringan...</div>';
+
+  // Mulai scan
+  fetch('/api/scan').then(r=>r.json()).then(()=>{
+    // Poll tiap 1.5 detik sampai selesai
+    let tries=0;
+    const poll=setInterval(()=>{
+      tries++;
+      fetch('/api/scan').then(r=>r.json()).then(d=>{
+        if(d.scanning && tries<10){return;} // masih scanning
+        clearInterval(poll);
+        list.innerHTML='';
+        if(!d.networks||!d.networks.length){
+          list.innerHTML='<div class="scan-item">Tidak ada jaringan ditemukan</div>';
+          btn.textContent='🔍 Scan Ulang';btn.disabled=false;return;
+        }
+        d.networks.forEach(n=>{
+          const div=document.createElement('div');div.className='scan-item';
+          const lock=n.enc?'🔒 ':'';
+          const bars=n.rssi>-60?'▂▄▆█':n.rssi>-75?'▂▄▆_':n.rssi>-85?'▂▄__':'▂___';
+          div.innerHTML='<span>'+lock+n.ssid+'</span><span style="color:var(--dim);font-size:11px">'+bars+' '+n.rssi+'dBm</span>';
+          div.onclick=()=>{document.getElementById('ssid').value=n.ssid;
+            list.querySelectorAll('.scan-item').forEach(x=>x.style.background='');
+            div.style.background='rgba(0,212,255,.08)';};
+          list.appendChild(div);
+        });
+        btn.textContent='🔍 Scan Ulang';btn.disabled=false;
+      }).catch(()=>{clearInterval(poll);btn.textContent='🔍 Scan Jaringan';btn.disabled=false;});
+    },1500);
+  }).catch(()=>{btn.textContent='🔍 Scan Jaringan';btn.disabled=false;});
+}
+function showSt(msg,cls){const b=document.getElementById('status-box');b.className='status-box '+cls;b.innerHTML=msg;b.style.display='block';}
+function simpan(){
+  const btn=document.getElementById('btn-save');
+  const devname=document.getElementById('devname').value.trim()||'BattAnalyzer';
+  if(_mode==='ap'){
+    btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
+    fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ap',devname,ssid:'',pass:'',ip_mode:'dhcp'})})
+    .then(r=>r.json()).then(()=>{showSt('✓ Tersimpan! Restart dalam 3 detik...','s-ok');btn.innerHTML='Simpan &amp; Mulai';btn.disabled=false;});
+    return;
+  }
+  const ssid=document.getElementById('ssid').value.trim();
+  const pass=document.getElementById('pass').value;
+  if(!ssid){showSt('✗ SSID tidak boleh kosong','s-err');return;}
+  const payload={mode:'sta',devname,ssid,pass,ip_mode:_ip};
+  if(_ip==='static'){
+    payload.ip=document.getElementById('ip').value.trim();payload.gw=document.getElementById('gw').value.trim();payload.sn=document.getElementById('sn').value.trim();payload.dns=document.getElementById('dns').value.trim();
+    if(!payload.ip||!payload.gw){showSt('✗ IP dan Gateway wajib diisi','s-err');return;}
+  }
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
+  fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(r=>r.json()).then(d=>{
+    if(d.ok)showSt('✓ Tersimpan! Konek ke WiFi <strong>'+ssid+'</strong> lalu buka halaman baru.','s-ok');
+    else showSt('✗ Gagal menyimpan.','s-err');
+    btn.innerHTML='Simpan &amp; Mulai';btn.disabled=false;
+  }).catch(()=>{showSt('✗ Koneksi terputus.','s-err');btn.innerHTML='Simpan &amp; Mulai';btn.disabled=false;});
+}
+</script>
+</body>
+</html>

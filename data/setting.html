@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattAnalyzer — Setting</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080e14;--panel:#0d1821;--card:#111e2b;--border:#1d3148;--border2:#243d58;--accent:#00d4ff;--accent2:#00ff9d;--warn:#f59e0b;--danger:#ff4d6d;--text:#e2eaf2;--dim:#4a6580;--dim2:#6b8299;--mono:'JetBrains Mono',monospace;--sans:'Rajdhani',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;background-image:radial-gradient(ellipse 800px 400px at 20% 0%,rgba(0,212,255,.04) 0%,transparent 70%)}
+nav{background:rgba(13,24,33,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent);letter-spacing:2px}
+.nav-tabs{display:flex;gap:2px}
+.tab{padding:7px 16px;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--dim2);transition:all .2s;letter-spacing:.5px;text-decoration:none;display:inline-block}
+.tab:hover{background:rgba(0,212,255,.08);color:var(--text)}
+.tab.active{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.wrap{padding:20px 24px;max-width:960px;margin:0 auto}
+/* Sub-tabs */
+.sec-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:20px;background:var(--panel);padding:6px;border-radius:10px;border:1px solid var(--border)}
+.stab{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--dim2);transition:all .2s;letter-spacing:.5px;border:none;background:transparent;font-family:var(--sans)}
+.stab:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.stab.active{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.section{display:none;animation:fadeIn .2s ease}
+.section.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* Card */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px}
+.card-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title span{font-size:16px}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+/* Form */
+.form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.form-group{flex:1;min-width:180px}
+.form-group.full{flex:0 0 100%}
+label{display:block;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);margin-bottom:5px}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.1)}
+select option{background:var(--card)}
+.hint{font-size:10px;color:var(--dim);margin-top:4px;font-family:var(--mono)}
+/* Toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info .tl{font-size:13px;font-weight:600;color:var(--text)}
+.toggle-info .ts{font-size:11px;color:var(--dim2);margin-top:2px}
+.toggle-sw{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-sw input{opacity:0;width:0;height:0}
+.toggle-thumb{position:absolute;inset:0;background:#1a3045;border-radius:24px;cursor:pointer;transition:.3s;border:1px solid var(--border2)}
+.toggle-thumb:before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:var(--dim);border-radius:50%;transition:.3s}
+input:checked+.toggle-thumb{background:rgba(0,212,255,.2);border-color:var(--accent)}
+input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--accent);box-shadow:0 0 8px var(--accent)}
+/* Buttons */
+.btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.btn{padding:9px 20px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px;font-family:var(--sans)}
+.btn-primary{background:var(--accent);color:#080e14}
+.btn-primary:hover{background:#33dbff;box-shadow:0 0 16px rgba(0,212,255,.3)}
+.btn-danger{background:rgba(255,77,109,.1);color:var(--danger);border:1px solid rgba(255,77,109,.3)}
+.btn-danger:hover{background:var(--danger);color:#fff}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--dim2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+/* Mode btns */
+.mode-group{display:flex;gap:6px;margin-top:6px}
+.mode-btn{flex:1;padding:9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--dim2);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;font-family:var(--sans)}
+.mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+/* Scan */
+.scan-list{margin-top:8px;max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;display:none;background:var(--panel)}
+.scan-item{padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;font-size:12px;transition:background .15s;font-family:var(--mono)}
+.scan-item:last-child{border-bottom:none}
+.scan-item:hover{background:rgba(0,212,255,.05);color:var(--accent)}
+.rssi-val{font-size:10px;color:var(--dim)}
+.ip-fields{display:none;margin-top:12px;padding:12px;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--border)}
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:12px;font-weight:700;display:none;z-index:999;font-family:var(--mono);letter-spacing:.5px}
+.toast.ok{background:#052e16;color:var(--accent2);border:1px solid rgba(0,255,157,.3)}
+.toast.err{background:#2d0a14;color:var(--danger);border:1px solid rgba(255,77,109,.3)}
+/* Relay schedule grid */
+.relay-sched{display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.relay-sched:last-child{border-bottom:none}
+.relay-sched label{font-size:11px;margin-bottom:0}
+.relay-sched input[type=number]{padding:6px 8px;font-size:12px}
+.day-btns{display:flex;gap:3px}
+.day-btn{width:24px;height:24px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim2);font-size:10px;cursor:pointer;font-family:var(--mono);transition:all .2s}
+.day-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.1)}
+/* Spinner */
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-right:4px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand"><span>⚡</span>BATTANALYZER</div>
+  <div class="nav-tabs">
+    <a class="tab" href="dashboard.html">Dashboard</a>
+    <a class="tab active" href="setting.html">Setting</a>
+    <a class="tab" href="system.html">System</a>
+    <a class="tab" href="log.html">Log</a>
+  </div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--dim2)" id="nav-ip">---</div>
+</nav>
+
+<div class="wrap">
+  <div class="sec-tabs">
+    <button class="stab active" onclick="showSec('wifi')">📶 WiFi</button>
+    <button class="stab" onclick="showSec('device')">🖥 Device</button>
+    <button class="stab" onclick="showSec('battery')">🔋 Battery</button>
+    <button class="stab" onclick="showSec('relay')">⚡ Relay</button>
+    <button class="stab" onclick="showSec('mqtt')">📡 MQTT</button>
+    <button class="stab" onclick="showSec('env')">🌡 Env</button>
+    <button class="stab" onclick="showSec('seismic')">🌍 Seismic</button>
+    <button class="stab" onclick="showSec('telegram')">✈️ Telegram</button>
+  </div>
+
+  <!-- ── WiFi ─────────────────────────────────────────────── -->
+  <div class="section active" id="sec-wifi">
+    <div class="card">
+      <div class="card-title"><span>📶</span> Mode Koneksi</div>
+      <div class="mode-group">
+        <button class="mode-btn active" id="btn-sta" onclick="setWifiMode('sta')">🌐 WiFi Router (STA)</button>
+        <button class="mode-btn" id="btn-ap" onclick="setWifiMode('ap')">📻 Access Point (AP)</button>
+      </div>
+    </div>
+    <div class="card" id="card-sta">
+      <div class="card-title"><span>🔍</span> Jaringan WiFi</div>
+      <button class="btn btn-ghost" id="btn-scan" onclick="scanWifi()" style="margin-bottom:10px">⟳ Scan Jaringan</button>
+      <div class="scan-list" id="scan-list"></div>
+      <div class="form-row" style="margin-top:10px">
+        <div class="form-group"><label>SSID</label><input type="text" id="ssid" placeholder="Nama jaringan WiFi"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="wpass" placeholder="Kata sandi WiFi"></div>
+      </div>
+      <hr class="divider">
+      <div class="card-title" style="margin-bottom:8px"><span>🔧</span> Mode IP</div>
+      <div class="mode-group">
+        <button class="mode-btn active" id="btn-dhcp" onclick="setIPMode('dhcp')">DHCP (Otomatis)</button>
+        <button class="mode-btn" id="btn-static" onclick="setIPMode('static')">IP Statis</button>
+      </div>
+      <div class="ip-fields" id="ip-fields">
+        <div class="form-row" style="margin-top:0">
+          <div class="form-group"><label>IP Address</label><input type="text" id="ip" placeholder="192.168.1.100"></div>
+          <div class="form-group"><label>Gateway</label><input type="text" id="gw" placeholder="192.168.1.1"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Subnet</label><input type="text" id="sn" placeholder="255.255.255.0"></div>
+          <div class="form-group"><label>DNS</label><input type="text" id="dns" placeholder="8.8.8.8"></div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveWifi()">Simpan &amp; Restart</button>
+      <button class="btn btn-danger" onclick="resetWifi()">Reset WiFi</button>
+    </div>
+  </div>
+
+  <!-- ── Device ────────────────────────────────────────────── -->
+  <div class="section" id="sec-device">
+    <div class="card">
+      <div class="card-title"><span>🖥</span> Identitas Perangkat</div>
+      <div class="form-row">
+        <div class="form-group"><label>Nama Perangkat</label><input type="text" id="dev_name" maxlength="24" placeholder="BattAnalyzer"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>🕐</span> NTP / Waktu</div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Sinkronisasi NTP</div><div class="ts">Ambil waktu dari internet tiap 6 jam</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="ntp_en" checked><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group" style="flex:2"><label>NTP Server</label><input type="text" id="ntp_server" placeholder="pool.ntp.org"></div>
+        <div class="form-group"><label>UTC Offset</label><input type="number" id="ntp_offset" min="-12" max="14" placeholder="7"><div class="hint">WIB=7, WITA=8, WIT=9</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>🔐</span> OLED Display</div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Layar OLED</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="oled_on" checked><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Auto-Scroll Halaman</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="oled_scroll"><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group"><label>Halaman Aktif</label>
+          <select id="oled_page">
+            <option value="0">0 - Status WiFi</option>
+            <option value="1">1 - Baterai</option>
+            <option value="2">2 - Daya</option>
+            <option value="3">3 - Akumulasi</option>
+            <option value="4">4 - Lingkungan</option>
+            <option value="5">5 - Seismik</option>
+            <option value="6">6 - Sistem</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Durasi Slide (detik)</label><input type="number" id="oled_dur" min="1" max="30" placeholder="3"></div>
+        <div class="form-group"><label>Kecerahan (0-255)</label><input type="number" id="oled_bright" min="0" max="255" placeholder="128"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>🔑</span> Ubah Kredensial</div>
+      <div class="form-row">
+        <div class="form-group"><label>Username Baru</label><input type="text" id="new_usr" placeholder="admin" autocomplete="off"></div>
+        <div class="form-group"><label>Password Baru</label><input type="password" id="new_pwd" placeholder="••••••" autocomplete="new-password"></div>
+        <div class="form-group"><label>Konfirmasi</label><input type="password" id="new_pwd2" placeholder="••••••" autocomplete="new-password"></div>
+      </div>
+      <div id="auth-status" style="display:none;font-size:12px;padding:8px 12px;border-radius:7px;margin-top:8px;font-family:var(--mono)"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveDevice()">Simpan Device</button>
+      <button class="btn btn-primary" onclick="saveOled()">Simpan OLED</button>
+      <button class="btn btn-ghost" onclick="saveAuth()">Simpan Kredensial</button>
+    </div>
+  </div>
+
+  <!-- ── Battery ───────────────────────────────────────────── -->
+  <div class="section" id="sec-battery">
+    <div class="card">
+      <div class="card-title"><span>🔋</span> Parameter Baterai</div>
+      <div class="form-row">
+        <div class="form-group"><label>Tegangan Maks (V)</label><input type="number" id="v_max" step="0.05" min="3.0" max="5.0" placeholder="4.20"></div>
+        <div class="form-group"><label>Tegangan Cutoff (V)</label><input type="number" id="v_cutoff" step="0.05" min="2.0" max="4.0" placeholder="3.00"></div>
+        <div class="form-group"><label>Arus Maks Alert (A)</label><input type="number" id="i_max" step="0.1" min="0.1" max="30.0" placeholder="3.00"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Kapasitas Nominal (mAh)</label><input type="number" id="cap_nom" step="100" min="100" placeholder="2000"></div>
+        <div class="form-group"><label>Shunt Resistor (mΩ)</label><input type="number" id="shunt" step="0.1" min="0.5" max="100" placeholder="5.0"><div class="hint">Default: 5mΩ. Ubah sesuai hardware.</div></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Auto Cutoff Relay 1</div><div class="ts">Putus relay 1 otomatis saat tegangan &lt; Cutoff</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="cutoff_en" checked><span class="toggle-thumb"></span></label>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveBattery()">Simpan Parameter</button>
+      <button class="btn btn-danger" onclick="resetEnergy()">Reset Akumulasi</button>
+    </div>
+  </div>
+
+  <!-- ── Relay Schedule ─────────────────────────────────────── -->
+  <div class="section" id="sec-relay">
+    <div class="card">
+      <div class="card-title"><span>⚡</span> Jadwal Relay</div>
+      <div class="hint" style="margin-bottom:12px">day_mask: 0x7F=setiap hari, 0x1F=Senin-Jumat, 0x60=Weekend. Relay 1 juga sebagai cutoff baterai otomatis.</div>
+      <div id="relay-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveRelay()">Simpan Jadwal Relay</button>
+    </div>
+  </div>
+
+  <!-- ── MQTT ──────────────────────────────────────────────── -->
+  <div class="section" id="sec-mqtt">
+    <div class="card">
+      <div class="card-title"><span>📡</span> MQTT Broker</div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Aktifkan MQTT</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="mqtt_en"><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group" style="flex:2"><label>Host / IP</label><input type="text" id="mqtt_host" placeholder="192.168.1.10 atau broker.hivemq.com"></div>
+        <div class="form-group"><label>Port</label><input type="number" id="mqtt_port" placeholder="1883"><div class="hint">TCP:1883 SSL:8883 WSS:443</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Username</label><input type="text" id="mqtt_user" placeholder="kosong jika tidak ada"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="mqtt_pass" placeholder="••••••"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Topic Prefix</label><input type="text" id="mqtt_topic" placeholder="battanalyzer"></div>
+        <div class="form-group"><label>Interval Kirim (detik)</label><input type="number" id="mqtt_intv" min="5" max="3600" placeholder="30"></div>
+        <div class="form-group"><label>QoS</label><select id="mqtt_qos"><option value="0">QoS 0 — Fire &amp; Forget</option><option value="1">QoS 1 — At Least Once</option></select></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Home Assistant MQTT Discovery</div><div class="ts">Publish config otomatis saat connect</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="mqtt_ha" checked><span class="toggle-thumb"></span></label>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveMqtt()">Simpan &amp; Terapkan MQTT</button></div>
+  </div>
+
+  <!-- ── Env ───────────────────────────────────────────────── -->
+  <div class="section" id="sec-env">
+    <div class="card">
+      <div class="card-title"><span>🌡</span> Kalibrasi Sensor Lingkungan</div>
+      <div class="hint" style="margin-bottom:12px">Offset ditambahkan ke nilai mentah sensor. Contoh: sensor baca 32°C tapi nyata 28°C → isi -4.</div>
+      <div class="form-row">
+        <div class="form-group"><label>Offset Suhu AHT20 (°C)</label><input type="number" id="aht_t_off" step="0.5" min="-20" max="20" placeholder="0"></div>
+        <div class="form-group"><label>Offset Kelembaban AHT20 (%)</label><input type="number" id="aht_h_off" step="1" min="-20" max="20" placeholder="0"></div>
+        <div class="form-group"><label>Offset Suhu BMP280 (°C)</label><input type="number" id="bmp_t_off" step="0.5" min="-20" max="20" placeholder="0"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveEnv()">Simpan Offset</button></div>
+  </div>
+
+  <!-- ── Seismic ───────────────────────────────────────────── -->
+  <div class="section" id="sec-seismic">
+    <div class="card">
+      <div class="card-title"><span>🌍</span> Konfigurasi ADXL345</div>
+      <div class="form-row">
+        <div class="form-group"><label>Threshold Gempa (g)</label><input type="number" id="seis_thr" step="0.1" min="0.1" max="5.0" placeholder="0.5"></div>
+        <div class="form-group" style="display:flex;align-items:flex-end;gap:8px">
+          <div style="flex:1"><label>Status Kalibrasi</label><div id="seis-cal-status" style="font-family:var(--mono);font-size:13px;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:7px">Belum dikalibrasi</div></div>
+        </div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--dim2);line-height:1.7;border:1px solid var(--border)">
+        <strong style="color:var(--text)">Cara kalibrasi:</strong><br>
+        1. Pastikan perangkat <strong style="color:var(--text)">datar dan tidak bergerak</strong><br>
+        2. Klik tombol "Kalibrasi Sekarang"<br>
+        3. Proses sampling ~1 detik lalu otomatis tersimpan
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="calibSeismic()">🎯 Kalibrasi Sekarang</button>
+        <button class="btn btn-ghost" onclick="resetSeismicCal()">Reset Kalibrasi</button>
+        <button class="btn btn-ghost" onclick="getGPS()">📍 GPS dari Browser</button>
+      </div>
+      <div id="seis-status-msg" style="display:none;margin-top:10px;padding:10px;border-radius:7px;font-size:12px;font-family:var(--mono)"></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveSeismic()">Simpan Threshold</button></div>
+  </div>
+
+  <!-- ── Telegram ──────────────────────────────────────────── -->
+  <div class="section" id="sec-telegram">
+    <div class="card">
+      <div class="card-title"><span>✈️</span> Telegram Bot</div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Aktifkan Telegram Bot</div><div class="ts">Notifikasi alert + command via Telegram</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="tele_en"><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group full"><label>Bot Token</label><input type="text" id="tele_token" placeholder="123456789:ABCdef..." autocomplete="off"><div class="hint">Dapatkan dari @BotFather di Telegram</div></div>
+        <div class="form-group full"><label>Chat ID (Whitelist)</label><input type="text" id="tele_cid" placeholder="123456789" autocomplete="off"><div class="hint">Hanya chat_id ini yang bisa kontrol bot. Cek dengan @userinfobot</div></div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--dim2);border:1px solid var(--border)">
+        <strong style="color:var(--text)">Command tersedia:</strong>
+        /status /baterai /cuaca /gempa /relay 1-4 on|off /alarm off /reboot /help
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveTelegram()">Simpan &amp; Terapkan</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let _wifiMode='sta',_ipMode='dhcp';
+let _relayData=[];
+
+window.onload=()=>{loadSetting();buildRelayUI();};
+
+function showSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toast(msg,ok=true){
+  const t=document.getElementById('toast');
+  t.className='toast '+(ok?'ok':'err');t.textContent=msg;t.style.display='block';
+  setTimeout(()=>t.style.display='none',3000);
+}
+
+function post(type,data){
+  return fetch('/api/setting',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({type,...data})}).then(r=>r.json());
+}
+
+function loadSetting(){
+  fetch('/api/setting').then(r=>r.json()).then(d=>{
+    document.getElementById('nav-ip').textContent=d.ip||'---';
+    // WiFi
+    setWifiMode(d.wifi_mode||'sta');
+    document.getElementById('ssid').value=d.ssid||'';
+    setIPMode(d.ip_mode||'dhcp');
+    if(d.ip_mode==='static'){
+      document.getElementById('ip').value=d.ip||'';
+      document.getElementById('gw').value=d.gw||'';
+      document.getElementById('sn').value=d.sn||'';
+      document.getElementById('dns').value=d.dns||'';
+    }
+    // Device
+    document.getElementById('dev_name').value=d.dev_name||'';
+    document.getElementById('ntp_en').checked=d.ntp_en!==false;
+    document.getElementById('ntp_server').value=d.ntp_server||'pool.ntp.org';
+    document.getElementById('ntp_offset').value=d.ntp_offset!==undefined?d.ntp_offset:7;
+    // OLED
+    document.getElementById('oled_on').checked=d.oled_on!==false;
+    document.getElementById('oled_scroll').checked=d.oled_scroll||false;
+    document.getElementById('oled_page').value=d.oled_page||0;
+    document.getElementById('oled_dur').value=d.oled_dur||3;
+    document.getElementById('oled_bright').value=d.oled_bright!==undefined?d.oled_bright:128;
+    // Battery
+    document.getElementById('v_max').value=d.v_max||4.2;
+    document.getElementById('v_cutoff').value=d.v_cutoff||3.0;
+    document.getElementById('i_max').value=d.i_max||3.0;
+    document.getElementById('cap_nom').value=d.cap_nom||2000;
+    document.getElementById('shunt').value=d.shunt||5.0;
+    document.getElementById('cutoff_en').checked=d.cutoff_en!==false;
+    // MQTT
+    document.getElementById('mqtt_en').checked=d.mqtt_en||false;
+    document.getElementById('mqtt_host').value=d.mqtt_host||'';
+    document.getElementById('mqtt_port').value=d.mqtt_port||1883;
+    document.getElementById('mqtt_user').value=d.mqtt_user||'';
+    document.getElementById('mqtt_topic').value=d.mqtt_topic||'battanalyzer';
+    document.getElementById('mqtt_intv').value=d.mqtt_intv||30;
+    document.getElementById('mqtt_qos').value=d.mqtt_qos||0;
+    document.getElementById('mqtt_ha').checked=d.mqtt_ha!==false;
+    // Env
+    document.getElementById('aht_t_off').value=d.aht_t_off||0;
+    document.getElementById('aht_h_off').value=d.aht_h_off||0;
+    document.getElementById('bmp_t_off').value=d.bmp_t_off||0;
+    // Seismic
+    document.getElementById('seis_thr').value=d.seis_thr||0.5;
+    document.getElementById('seis-cal-status').textContent=d.seis_cal?'✅ Sudah dikalibrasi':'❌ Belum dikalibrasi';
+    document.getElementById('seis-cal-status').style.color=d.seis_cal?'var(--accent2)':'var(--danger)';
+    // Telegram
+    document.getElementById('tele_en').checked=d.tele_en||false;
+    document.getElementById('tele_token').value=d.tele_token||'';
+    document.getElementById('tele_cid').value=d.tele_cid||'';
+    // Relay
+    if(d.relays){_relayData=d.relays;buildRelayUI();}
+  }).catch(()=>{});
+}
+
+// ── WiFi ───────────────────────────────────────────────────────
+function setWifiMode(m){
+  _wifiMode=m;
+  document.getElementById('btn-sta').className='mode-btn'+(m==='sta'?' active':'');
+  document.getElementById('btn-ap').className='mode-btn'+(m==='ap'?' active':'');
+  document.getElementById('card-sta').style.display=m==='sta'?'block':'none';
+}
+function setIPMode(m){
+  _ipMode=m;
+  document.getElementById('btn-dhcp').className='mode-btn'+(m==='dhcp'?' active':'');
+  document.getElementById('btn-static').className='mode-btn'+(m==='static'?' active':'');
+  document.getElementById('ip-fields').style.display=m==='static'?'block':'none';
+}
+function scanWifi(){
+  const btn=document.getElementById('btn-scan');
+  btn.innerHTML='<span class="spinner"></span>Memindai...';btn.disabled=true;
+  fetch('/api/scan').then(r=>r.json()).then(d=>{
+    const list=document.getElementById('scan-list');list.style.display='block';list.innerHTML='';
+    if(!d.networks.length){list.innerHTML='<div class="scan-item">Tidak ada jaringan</div>';return;}
+    d.networks.forEach(n=>{
+      const div=document.createElement('div');div.className='scan-item';
+      div.innerHTML='<span>'+n.ssid+'</span><span class="rssi-val">'+n.rssi+' dBm</span>';
+      div.onclick=()=>{document.getElementById('ssid').value=n.ssid;};
+      list.appendChild(div);
+    });
+    btn.innerHTML='⟳ Scan Ulang';btn.disabled=false;
+  }).catch(()=>{btn.innerHTML='⟳ Scan Jaringan';btn.disabled=false;});
+}
+function saveWifi(){
+  if(!confirm('Perangkat akan restart. Lanjutkan?'))return;
+  const p={wifi_mode:_wifiMode,ssid:document.getElementById('ssid').value.trim(),
+    pass:document.getElementById('wpass').value,ip_mode:_ipMode};
+  if(_ipMode==='static'){p.ip=document.getElementById('ip').value.trim();p.gw=document.getElementById('gw').value.trim();p.sn=document.getElementById('sn').value.trim();p.dns=document.getElementById('dns').value.trim();}
+  post('wifi',p).then(d=>toast(d.ok?'✓ Tersimpan! Restart...':'✗ Gagal',d.ok)).catch(()=>toast('✗ Koneksi terputus',false));
+}
+function resetWifi(){
+  if(!confirm('Reset semua setting WiFi?'))return;
+  post('reset_wifi',{}).then(()=>toast('✓ Reset WiFi!')).catch(()=>toast('✗ Error',false));
+}
+// ── Device ─────────────────────────────────────────────────────
+function saveDevice(){
+  post('device',{dev_name:document.getElementById('dev_name').value.trim(),
+    ntp_en:document.getElementById('ntp_en').checked,
+    ntp_server:document.getElementById('ntp_server').value.trim(),
+    ntp_offset:parseInt(document.getElementById('ntp_offset').value)||7})
+  .then(d=>toast(d.ok?'✓ Tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+function saveOled(){
+  post('oled',{oled_on:document.getElementById('oled_on').checked,
+    oled_scroll:document.getElementById('oled_scroll').checked,
+    oled_page:parseInt(document.getElementById('oled_page').value)||0,
+    oled_dur:parseInt(document.getElementById('oled_dur').value)||3,
+    oled_bright:parseInt(document.getElementById('oled_bright').value)||128})
+  .then(d=>toast(d.ok?'✓ OLED tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+function saveAuth(){
+  const u=document.getElementById('new_usr').value.trim();
+  const p=document.getElementById('new_pwd').value;
+  const p2=document.getElementById('new_pwd2').value;
+  const st=document.getElementById('auth-status');
+  if(!u){st.style.display='block';st.style.background='rgba(255,77,109,.1)';st.style.color='var(--danger)';st.textContent='✗ Username kosong';return;}
+  if(p.length<4){st.style.display='block';st.style.background='rgba(255,77,109,.1)';st.style.color='var(--danger)';st.textContent='✗ Password min 4 karakter';return;}
+  if(p!==p2){st.style.display='block';st.style.background='rgba(255,77,109,.1)';st.style.color='var(--danger)';st.textContent='✗ Password tidak cocok';return;}
+  post('auth',{usr:u,pwd:p}).then(d=>{
+    st.style.display='block';st.style.background=d.ok?'rgba(0,255,157,.08)':'rgba(255,77,109,.1)';st.style.color=d.ok?'var(--accent2)':'var(--danger)';
+    st.textContent=d.ok?'✓ Tersimpan. Silakan login ulang.':('✗ '+(d.msg||'Gagal'));
+    if(d.ok)setTimeout(()=>{fetch('/api/logout',{method:'POST'}).finally(()=>location.href='/login.html');},2000);
+  }).catch(()=>toast('✗ Error',false));
+}
+// ── Battery ────────────────────────────────────────────────────
+function saveBattery(){
+  post('battery',{v_max:parseFloat(document.getElementById('v_max').value),
+    v_cutoff:parseFloat(document.getElementById('v_cutoff').value),
+    i_max:parseFloat(document.getElementById('i_max').value),
+    cap_nom:parseFloat(document.getElementById('cap_nom').value),
+    shunt:parseFloat(document.getElementById('shunt').value),
+    cutoff_en:document.getElementById('cutoff_en').checked})
+  .then(d=>toast(d.ok?'✓ Parameter tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+function resetEnergy(){
+  if(!confirm('Reset semua data akumulasi mAh/Wh?'))return;
+  post('reset_energy',{}).then(d=>toast(d.ok?'✓ Reset akumulasi':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+// ── Relay UI ───────────────────────────────────────────────────
+function buildRelayUI(){
+  const el=document.getElementById('relay-list');
+  if(!el)return;
+  const days=['S','S','R','K','J','S','M'];
+  let html='';
+  for(let i=0;i<4;i++){
+    const r=_relayData[i]||{en:false,onh:0,onm:0,ofh:23,ofm:59,day:127};
+    html+=`<div class="relay-sched">
+      <div>
+        <label>Relay ${i+1}</label>
+        <label class="toggle-sw" style="display:inline-block;margin-top:4px">
+          <input type="checkbox" id="rly${i}_en" ${r.en?'checked':''}><span class="toggle-thumb"></span>
+        </label>
+      </div>
+      <div><label>ON</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="rly${i}_onh" value="${r.onh}" min="0" max="23" style="width:60px">
+          <input type="number" id="rly${i}_onm" value="${r.onm}" min="0" max="59" style="width:60px">
+        </div>
+      </div>
+      <div><label>OFF</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="rly${i}_ofh" value="${r.ofh}" min="0" max="23" style="width:60px">
+          <input type="number" id="rly${i}_ofm" value="${r.ofm}" min="0" max="59" style="width:60px">
+        </div>
+      </div>
+      <div><label>Hari</label>
+        <div class="day-btns" id="rly${i}_days">
+          ${days.map((d,j)=>`<button class="day-btn ${(r.day&(1<<j))?'on':''}" onclick="toggleDay(${i},${j},this)">${d}</button>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+function toggleDay(relay,bit,btn){
+  btn.classList.toggle('on');
+}
+function saveRelay(){
+  const relays=[];
+  for(let i=0;i<4;i++){
+    let day=0;
+    const dayBtns=document.querySelectorAll('#rly'+i+'_days .day-btn');
+    dayBtns.forEach((b,j)=>{if(b.classList.contains('on'))day|=(1<<j);});
+    relays.push({en:document.getElementById('rly'+i+'_en').checked,
+      onh:parseInt(document.getElementById('rly'+i+'_onh').value)||0,
+      onm:parseInt(document.getElementById('rly'+i+'_onm').value)||0,
+      ofh:parseInt(document.getElementById('rly'+i+'_ofh').value)||23,
+      ofm:parseInt(document.getElementById('rly'+i+'_ofm').value)||59,
+      day});
+  }
+  post('relay',{relays}).then(d=>toast(d.ok?'✓ Jadwal tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+// ── MQTT ───────────────────────────────────────────────────────
+function saveMqtt(){
+  post('mqtt',{mqtt_en:document.getElementById('mqtt_en').checked,
+    mqtt_host:document.getElementById('mqtt_host').value.trim(),
+    mqtt_port:parseInt(document.getElementById('mqtt_port').value)||1883,
+    mqtt_user:document.getElementById('mqtt_user').value.trim(),
+    mqtt_pass:document.getElementById('mqtt_pass').value,
+    mqtt_topic:document.getElementById('mqtt_topic').value.trim()||'battanalyzer',
+    mqtt_intv:parseInt(document.getElementById('mqtt_intv').value)||30,
+    mqtt_qos:parseInt(document.getElementById('mqtt_qos').value)||0,
+    mqtt_ha:document.getElementById('mqtt_ha').checked})
+  .then(d=>toast(d.ok?'✓ MQTT tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+// ── Env ────────────────────────────────────────────────────────
+function saveEnv(){
+  post('env',{aht_t_off:parseFloat(document.getElementById('aht_t_off').value)||0,
+    aht_h_off:parseFloat(document.getElementById('aht_h_off').value)||0,
+    bmp_t_off:parseFloat(document.getElementById('bmp_t_off').value)||0})
+  .then(d=>toast(d.ok?'✓ Offset tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+// ── Seismic ────────────────────────────────────────────────────
+function saveSeismic(){
+  post('seismic',{seis_thr:parseFloat(document.getElementById('seis_thr').value)||0.5})
+  .then(d=>toast(d.ok?'✓ Threshold tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+function calibSeismic(){
+  const msg=document.getElementById('seis-status-msg');
+  msg.style.display='block';msg.style.background='rgba(0,212,255,.08)';msg.style.color='var(--accent)';
+  msg.textContent='⏳ Kalibrasi berjalan... Jangan gerakkan perangkat!';
+  post('seismic_cal',{}).then(()=>{
+    setTimeout(()=>{
+      msg.style.background='rgba(0,255,157,.08)';msg.style.color='var(--accent2)';
+      msg.textContent='✅ Kalibrasi selesai! Offset tersimpan.';
+      document.getElementById('seis-cal-status').textContent='✅ Sudah dikalibrasi';
+      document.getElementById('seis-cal-status').style.color='var(--accent2)';
+    },1500);
+  }).catch(()=>{msg.style.color='var(--danger)';msg.textContent='✗ Gagal';});
+}
+function resetSeismicCal(){
+  if(!confirm('Reset data kalibrasi ADXL345?'))return;
+  // Kirim threshold saja, backend akan reset cal via seismic.resetCalibration
+  toast('✓ Kalibrasi direset (akan aktif setelah restart)');
+}
+function getGPS(){
+  if(!navigator.geolocation){toast('✗ Browser tidak support GPS',false);return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    post('location',{name:'Browser GPS',lat,lng})
+      .then(d=>toast(d.ok?`✓ Lokasi: ${lat.toFixed(5)}, ${lng.toFixed(5)}`:'✗ Gagal',d.ok));
+  },()=>toast('✗ GPS gagal / ditolak',false),{enableHighAccuracy:true,timeout:15000});
+}
+// ── Telegram ───────────────────────────────────────────────────
+function saveTelegram(){
+  post('telegram',{tele_en:document.getElementById('tele_en').checked,
+    tele_token:document.getElementById('tele_token').value.trim(),
+    tele_cid:document.getElementById('tele_cid').value.trim()})
+  .then(d=>toast(d.ok?'✓ Telegram tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+</script>
+</body>
+</html>

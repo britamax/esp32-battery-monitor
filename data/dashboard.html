@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattAnalyzer — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080e14;--panel:#0d1821;--card:#111e2b;--border:#1d3148;--border2:#243d58;--accent:#00d4ff;--accent2:#00ff9d;--warn:#f59e0b;--danger:#ff4d6d;--text:#e2eaf2;--dim:#4a6580;--dim2:#6b8299;--mono:'JetBrains Mono',monospace;--sans:'Rajdhani',sans-serif;--glow:0 0 20px rgba(0,212,255,.15);--glow2:0 0 20px rgba(0,255,157,.15)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;background-image:radial-gradient(ellipse 800px 400px at 20% 0%,rgba(0,212,255,.04) 0%,transparent 70%),radial-gradient(ellipse 600px 400px at 80% 100%,rgba(0,255,157,.03) 0%,transparent 70%)}
+nav{background:rgba(13,24,33,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent);letter-spacing:2px}
+.nav-tabs{display:flex;gap:2px}
+.tab{padding:7px 16px;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--dim2);transition:all .2s;letter-spacing:.5px;text-decoration:none;display:inline-block}
+.tab:hover{background:rgba(0,212,255,.08);color:var(--text)}
+.tab.active{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.live-badge{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--accent2);letter-spacing:1px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:blink 1.4s ease-in-out infinite}
+.live-dot.off{background:var(--danger);box-shadow:0 0 8px var(--danger);animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.uptime-val{font-family:var(--mono);font-size:11px;color:var(--dim2)}
+.wrap{padding:20px 24px;max-width:1400px;margin:0 auto}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--border2)}
+.card.c-accent::before{background:var(--accent);box-shadow:var(--glow)}
+.card.c-green::before{background:var(--accent2);box-shadow:var(--glow2)}
+.card.c-warn::before{background:var(--warn)}
+.card.c-danger::before{background:var(--danger)}
+.card.c-purple::before{background:#a78bfa}
+.card-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.badge{font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:3px;letter-spacing:1px}
+.badge-chg{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.badge-dis{background:rgba(255,77,109,.1);color:var(--danger);border:1px solid rgba(255,77,109,.2)}
+.badge-idle{background:rgba(74,101,128,.15);color:var(--dim2);border:1px solid var(--border)}
+.val-huge{font-family:var(--mono);font-size:40px;line-height:1;color:var(--text);font-weight:300}
+.val-big{font-family:var(--mono);font-size:28px;font-weight:300;color:var(--text)}
+.val-unit{font-family:var(--mono);font-size:13px;color:var(--dim2);margin-left:3px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.metric{background:rgba(0,0,0,.3);border-radius:7px;padding:8px 10px;border:1px solid var(--border)}
+.m-label{font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
+.m-val{font-family:var(--mono);font-size:17px;color:var(--text)}
+.m-val.accent{color:var(--accent)}
+.m-val.green{color:var(--accent2)}
+.m-val.warn{color:var(--warn)}
+.m-val.danger{color:var(--danger)}
+/* SOC Bar */
+.soc-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:10px;margin-bottom:4px}
+.soc-track{height:5px;background:rgba(0,0,0,.4);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.soc-fill{height:100%;border-radius:3px;transition:width .8s ease;background:var(--accent2)}
+.soc-fill.warn{background:var(--warn)}
+.soc-fill.danger{background:var(--danger)}
+/* Sparkline */
+.spark-wrap{margin-top:12px}
+.spark-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px}
+canvas.spark{width:100%;height:48px;display:block}
+/* Relay */
+.relay-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.relay-item{background:rgba(0,0,0,.3);border-radius:8px;padding:10px 8px;text-align:center;border:1px solid var(--border);cursor:pointer;transition:all .2s;user-select:none}
+.relay-item:hover{border-color:var(--border2)}
+.relay-item.on{border-color:rgba(0,255,157,.3);background:rgba(0,255,157,.05)}
+.relay-num{font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px}
+.relay-icon{font-size:20px;margin-bottom:4px}
+.relay-state{font-family:var(--mono);font-size:10px;font-weight:600}
+.relay-state.on{color:var(--accent2)}
+.relay-state.off{color:var(--dim)}
+/* Env */
+.env-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.env-item{background:rgba(0,0,0,.3);border-radius:7px;padding:10px;text-align:center;border:1px solid var(--border)}
+.env-icon{font-size:22px;margin-bottom:4px}
+.env-label{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.env-val{font-family:var(--mono);font-size:18px;color:var(--accent)}
+.env-unit{font-size:10px;color:var(--dim)}
+/* Seismic */
+.seis-bar{display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 14px;border-radius:8px;background:rgba(0,255,157,.05);border:1px solid rgba(0,255,157,.15);transition:all .3s}
+.seis-bar.alert{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.4);animation:pulseBorder .8s infinite}
+@keyframes pulseBorder{0%,100%{border-color:rgba(255,77,109,.3)}50%{border-color:rgba(255,77,109,.8)}}
+.seis-icon{font-size:28px}
+.seis-info{flex:1}
+.seis-lbl{font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.seis-val{font-family:var(--mono);font-size:22px;color:var(--accent2)}
+.seis-val.alert{color:var(--danger)}
+/* Accum */
+.accum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.accum-item{background:rgba(0,0,0,.3);border-radius:7px;padding:10px;text-align:center;border:1px solid var(--border)}
+.accum-label{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.accum-val{font-family:var(--mono);font-size:15px}
+.footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand"><span>⚡</span>BATTANALYZER</div>
+  <div class="nav-tabs">
+    <a class="tab active" href="dashboard.html">Dashboard</a>
+    <a class="tab" href="setting.html">Setting</a>
+    <a class="tab" href="system.html">System</a>
+    <a class="tab" href="log.html">Log</a>
+  </div>
+  <div class="nav-right">
+    <span class="uptime-val" id="uptime">--:--:--</span>
+    <div class="live-badge">
+      <div class="live-dot" id="live-dot"></div>
+      <span>LIVE</span>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <!-- ROW 1: Voltage + Current + Power + SoC -->
+  <div class="grid-4">
+    <div class="card c-accent">
+      <div class="card-label">TEGANGAN<span class="badge badge-idle" id="batt-badge">IDLE</span></div>
+      <div><span class="val-huge" id="batt-v">-.---</span><span class="val-unit">V</span></div>
+      <div class="soc-row"><span>0%</span><span id="soc-pct">--%</span><span>100%</span></div>
+      <div class="soc-track"><div class="soc-fill" id="soc-fill" style="width:0%"></div></div>
+    </div>
+    <div class="card c-green">
+      <div class="card-label">ARUS</div>
+      <div><span class="val-huge" id="batt-i">-.---</span><span class="val-unit">A</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="m-label">Daya</div><div class="m-val accent" id="batt-p">-.--</div><div class="m-label">W</div></div>
+        <div class="metric"><div class="m-label">R Internal</div><div class="m-val" id="batt-ri">-.--</div><div class="m-label">mΩ</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">STATE OF CHARGE</div>
+      <div><span class="val-huge" id="batt-soc">--</span><span class="val-unit">%</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="m-label">Runtime Est.</div><div class="m-val green" id="batt-rt">--</div><div class="m-label">menit</div></div>
+        <div class="metric"><div class="m-label">Siklus</div><div class="m-val" id="batt-cyc">0</div><div class="m-label">kali</div></div>
+      </div>
+    </div>
+    <div class="card c-warn">
+      <div class="card-label">AKUMULASI</div>
+      <div class="accum-grid">
+        <div class="accum-item"><div class="accum-label">Charge</div><div class="accum-val accent" id="acc-mahc">0</div><div class="accum-label">mAh</div></div>
+        <div class="accum-item"><div class="accum-label">Discharge</div><div class="accum-val danger" id="acc-mahd">0</div><div class="accum-label">mAh</div></div>
+        <div class="accum-item"><div class="accum-label">Wh Chg</div><div class="accum-val green" id="acc-whc">0.00</div></div>
+        <div class="accum-item"><div class="accum-label">Wh Dis</div><div class="accum-val warn" id="acc-whd">0.00</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Sparkline + Relay -->
+  <div class="grid-2">
+    <div class="card c-accent">
+      <div class="card-label">TREN TEGANGAN &amp; ARUS <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">60 titik</span></div>
+      <div class="spark-wrap">
+        <div class="spark-label"><span>V</span><span id="spark-v-now">-.---V</span></div>
+        <canvas class="spark" id="sparkV" height="48"></canvas>
+        <div class="spark-label" style="margin-top:8px"><span>I</span><span id="spark-i-now">-.---A</span></div>
+        <canvas class="spark" id="sparkI" height="48"></canvas>
+      </div>
+    </div>
+    <div class="card c-green">
+      <div class="card-label">RELAY KONTROL</div>
+      <div class="relay-grid">
+        <div class="relay-item" id="relay-0" onclick="toggleRelay(1)">
+          <div class="relay-num">R1 CUTOFF</div>
+          <div class="relay-icon">🔌</div>
+          <div class="relay-state off" id="relay-state-0">OFF</div>
+        </div>
+        <div class="relay-item" id="relay-1" onclick="toggleRelay(2)">
+          <div class="relay-num">R2 BEBAN</div>
+          <div class="relay-icon">💡</div>
+          <div class="relay-state off" id="relay-state-1">OFF</div>
+        </div>
+        <div class="relay-item" id="relay-2" onclick="toggleRelay(3)">
+          <div class="relay-num">R3 BEBAN</div>
+          <div class="relay-icon">⚙️</div>
+          <div class="relay-state off" id="relay-state-2">OFF</div>
+        </div>
+        <div class="relay-item" id="relay-3" onclick="toggleRelay(4)">
+          <div class="relay-num">R4 BEBAN</div>
+          <div class="relay-icon">🔧</div>
+          <div class="relay-state off" id="relay-state-3">OFF</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Env + Seismic -->
+  <div class="grid-2">
+    <div class="card c-purple">
+      <div class="card-label">LINGKUNGAN</div>
+      <div class="env-grid">
+        <div class="env-item">
+          <div class="env-icon">🌡️</div>
+          <div class="env-label">Suhu</div>
+          <div class="env-val" id="env-temp">--.-</div>
+          <div class="env-unit">°C</div>
+        </div>
+        <div class="env-item">
+          <div class="env-icon">💧</div>
+          <div class="env-label">Kelembaban</div>
+          <div class="env-val" id="env-hum">--.-</div>
+          <div class="env-unit">%RH</div>
+        </div>
+        <div class="env-item">
+          <div class="env-icon" id="env-wxi">⛅</div>
+          <div class="env-label">Tekanan</div>
+          <div class="env-val" id="env-pres">----.-</div>
+          <div class="env-unit">hPa <span id="env-wx" style="color:var(--dim2);font-size:9px"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card c-danger">
+      <div class="card-label">SEISMIK</div>
+      <div class="seis-bar" id="seis-bar">
+        <div class="seis-icon" id="seis-icon">🌍</div>
+        <div class="seis-info">
+          <div class="seis-lbl">MAGNITUDE</div>
+          <div class="seis-val" id="seis-val">-.----</div>
+          <div style="font-size:10px;color:var(--dim2);font-family:var(--mono);margin-top:2px" id="seis-status">AMAN</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim);text-align:right">
+          <div>AccX: <span id="seis-ax">-.---</span></div>
+          <div>AccY: <span id="seis-ay">-.---</span></div>
+          <div>AccZ: <span id="seis-az">-.---</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">BattAnalyzer v1.0.0 &nbsp;|&nbsp; <span id="footer-ip">---</span> &nbsp;|&nbsp; MQTT: <span id="footer-mqtt">--</span></div>
+</div>
+
+<script>
+// ── WebSocket ─────────────────────────────────────────────────
+let ws, wsRetry=0, lastData={};
+const sparkVData=[], sparkIData=[];
+
+function wsConnect(){
+  ws=new WebSocket('ws://'+location.hostname+'/ws');
+  ws.onopen=()=>{wsRetry=0;setLive(true);};
+  ws.onclose=()=>{setLive(false);setTimeout(wsConnect,2000+wsRetry*1000);wsRetry=Math.min(wsRetry+1,10);};
+  ws.onerror=()=>{ws.close();};
+  ws.onmessage=e=>{
+    try{const d=JSON.parse(e.data);if(d.type==='data'){updateUI(d);}
+    }catch(ex){}
+  };
+}
+
+function setLive(ok){
+  document.getElementById('live-dot').className='live-dot'+(ok?'':' off');
+}
+
+function fmt(v,d){return isNaN(v)?'--':parseFloat(v).toFixed(d);}
+function fmtSigned(v,d){if(isNaN(v))return'--';const n=parseFloat(v);return(n>=0?'+':'')+n.toFixed(d);}
+function fmtUptime(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+}
+
+function updateUI(d){
+  const b=d.batt||{};
+  // Battery
+  document.getElementById('batt-v').textContent=fmt(b.v,3);
+  const i=parseFloat(b.i);
+  document.getElementById('batt-i').textContent=isNaN(i)?'--':(i>=0?'+':'')+i.toFixed(3);
+  document.getElementById('batt-i').className='val-huge '+(i>0.05?'green':i<-0.05?'danger':'');
+  document.getElementById('batt-p').textContent=fmt(b.p,2);
+  document.getElementById('batt-ri').textContent=fmt(b.ri,1);
+  document.getElementById('batt-soc').textContent=fmt(b.soc,0);
+  document.getElementById('soc-pct').textContent=fmt(b.soc,0)+'%';
+  document.getElementById('batt-rt').textContent=b.rt>0?fmt(b.rt,0):'∞';
+  document.getElementById('batt-cyc').textContent=b.cyc||0;
+  document.getElementById('acc-mahc').textContent=fmt(b.mahc,0);
+  document.getElementById('acc-mahd').textContent=fmt(b.mahd,0);
+  document.getElementById('acc-whc').textContent=fmt(b.whc,2);
+  document.getElementById('acc-whd').textContent=fmt(b.whd,2);
+
+  // Status badge
+  const badge=document.getElementById('batt-badge');
+  const st=b.st||'IDLE';
+  if(st==='CHARGING'){badge.className='badge badge-chg';badge.textContent='CHG';}
+  else if(st==='DISCHARGING'){badge.className='badge badge-dis';badge.textContent='DIS';}
+  else{badge.className='badge badge-idle';badge.textContent='IDLE';}
+
+  // SOC bar
+  const soc=parseFloat(b.soc)||0;
+  const fill=document.getElementById('soc-fill');
+  fill.style.width=soc+'%';
+  fill.className='soc-fill'+(soc<20?' danger':soc<50?' warn':'');
+
+  // Sparkline
+  if(!isNaN(b.v)){sparkVData.push(parseFloat(b.v));if(sparkVData.length>60)sparkVData.shift();}
+  if(!isNaN(b.i)){sparkIData.push(parseFloat(b.i));if(sparkIData.length>60)sparkIData.shift();}
+  drawSpark('sparkV',sparkVData,'rgba(0,212,255,.8)','rgba(0,212,255,.1)');
+  drawSpark('sparkI',sparkIData,'rgba(0,255,157,.8)','rgba(0,255,157,.1)');
+  document.getElementById('spark-v-now').textContent=fmt(b.v,3)+'V';
+  document.getElementById('spark-i-now').textContent=fmtSigned(b.i,3)+'A';
+
+  // Relay
+  const relays=d.relay||[];
+  for(let i=0;i<4;i++){
+    const on=relays[i]===true;
+    document.getElementById('relay-'+i).className='relay-item'+(on?' on':'');
+    const s=document.getElementById('relay-state-'+i);
+    s.className='relay-state'+(on?' on':' off');
+    s.textContent=on?'ON':'OFF';
+  }
+
+  // Env
+  const e=d.env||{};
+  document.getElementById('env-temp').textContent=fmt(e.temp,1);
+  document.getElementById('env-hum').textContent=fmt(e.hum,1);
+  document.getElementById('env-pres').textContent=fmt(e.pres,1);
+  document.getElementById('env-wxi').textContent=e.wxi||'⛅';
+  document.getElementById('env-wx').textContent=e.wx||'';
+
+  // Seismic
+  const s=d.seis||{};
+  const mag=parseFloat(s.mag)||0;
+  const alert=mag>0.5;
+  document.getElementById('seis-val').textContent=fmt(s.mag,4);
+  document.getElementById('seis-val').className='seis-val'+(alert?' alert':'');
+  document.getElementById('seis-status').textContent=s.st||'AMAN';
+  document.getElementById('seis-bar').className='seis-bar'+(alert?' alert':'');
+  document.getElementById('seis-icon').textContent=alert?'🚨':'🌍';
+  document.getElementById('seis-ax').textContent=fmt(s.ax,3);
+  document.getElementById('seis-ay').textContent=fmt(s.ay,3);
+  document.getElementById('seis-az').textContent=fmt(s.az,3);
+
+  // System
+  document.getElementById('uptime').textContent=fmtUptime(parseInt(d.uptime)||0);
+  document.getElementById('footer-ip').textContent=d.ip||'---';
+  document.getElementById('footer-mqtt').textContent=d.mqtt_ok?'OK':'OFF';
+}
+
+// ── Sparkline Canvas ──────────────────────────────────────────
+function drawSpark(id,data,stroke,fill){
+  const canvas=document.getElementById(id);
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||280,H=48;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+  if(data.length<2)return;
+  const min=Math.min(...data),max=Math.max(...data);
+  const range=max-min||0.001;
+  const pts=data.map((v,i)=>({x:i*(W/(data.length-1)),y:H-(((v-min)/range)*(H-8)+4)}));
+  ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.lineTo(pts[pts.length-1].x,H);ctx.lineTo(pts[0].x,H);ctx.closePath();
+  ctx.fillStyle=fill;ctx.fill();
+}
+
+// ── Relay Toggle ──────────────────────────────────────────────
+function toggleRelay(n){
+  const idx=n-1;
+  const cur=document.getElementById('relay-state-'+idx).textContent==='ON';
+  fetch('/api/relay',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({idx:n,on:!cur})});
+}
+
+// ── Load sparkline history dari API ──────────────────────────
+function loadSpark(){
+  fetch('/api/spark').then(r=>r.json()).then(d=>{
+    if(d.v)d.v.forEach(v=>{sparkVData.push(v);if(sparkVData.length>60)sparkVData.shift();});
+    if(d.i)d.i.forEach(v=>{sparkIData.push(v);if(sparkIData.length>60)sparkIData.shift();});
+    drawSpark('sparkV',sparkVData,'rgba(0,212,255,.8)','rgba(0,212,255,.1)');
+    drawSpark('sparkI',sparkIData,'rgba(0,255,157,.8)','rgba(0,255,157,.1)');
+  }).catch(()=>{});
+}
+
+wsConnect();
+loadSpark();
+window.addEventListener('resize',()=>{
+  drawSpark('sparkV',sparkVData,'rgba(0,212,255,.8)','rgba(0,212,255,.1)');
+  drawSpark('sparkI',sparkIData,'rgba(0,255,157,.8)','rgba(0,255,157,.1)');
+});
+</script>
+</body>
+</html>

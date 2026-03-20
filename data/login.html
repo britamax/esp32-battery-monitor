@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattAnalyzer — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080e14;--card:#0d1821;--border:#1d3148;--accent:#00d4ff;--accent2:#00ff9d;--danger:#ff4d6d;--text:#e2eaf2;--dim:#4a6580;--dim2:#6b8299;--mono:'JetBrains Mono',monospace;--sans:'Rajdhani',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background-image:radial-gradient(ellipse 700px 500px at 30% 20%,rgba(0,212,255,.05) 0%,transparent 60%),radial-gradient(ellipse 500px 400px at 70% 80%,rgba(0,255,157,.03) 0%,transparent 60%)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 0 60px rgba(0,0,0,.6)}
+.logo{text-align:center;margin-bottom:32px}
+.logo-icon{font-size:48px;display:block;margin-bottom:10px;filter:drop-shadow(0 0 20px rgba(0,212,255,.4))}
+.logo-title{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent);letter-spacing:3px;margin-bottom:4px}
+.logo-sub{font-size:11px;color:var(--dim2);letter-spacing:1px}
+label{display:block;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:5px;margin-top:14px}
+.input-wrap{position:relative}
+input{width:100%;padding:10px 14px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:all .2s}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.1)}
+.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim2);cursor:pointer;font-size:14px;padding:4px;transition:color .2s}
+.eye-btn:hover{color:var(--accent)}
+.btn-login{width:100%;margin-top:24px;padding:12px;background:linear-gradient(135deg,var(--accent),#0099bb);border:none;border-radius:8px;color:#080e14;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px;font-family:var(--sans);box-shadow:0 4px 20px rgba(0,212,255,.2)}
+.btn-login:hover{box-shadow:0 4px 28px rgba(0,212,255,.35);transform:translateY(-1px)}
+.btn-login:disabled{background:#1a3045;color:var(--dim);cursor:not-allowed;transform:none;box-shadow:none}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(8,14,20,.4);border-top-color:rgba(8,14,20,.9);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error{display:none;margin-top:14px;padding:10px 14px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.25);border-radius:8px;color:var(--danger);font-size:12px;text-align:center;font-family:var(--mono)}
+.footer-note{text-align:center;margin-top:20px;font-size:10px;color:var(--dim);font-family:var(--mono)}
+.footer-note strong{color:var(--dim2)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <span class="logo-icon">⚡</span>
+    <div class="logo-title">BATTANALYZER</div>
+    <div class="logo-sub">Battery Monitor &amp; Analyzer</div>
+  </div>
+  <label for="usr">Username</label>
+  <input type="text" id="usr" placeholder="admin" autocomplete="username">
+  <label for="pwd">Password</label>
+  <div class="input-wrap">
+    <input type="password" id="pwd" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="eye-btn" onclick="togglePwd()" type="button">👁</button>
+  </div>
+  <button class="btn-login" id="btn-login" onclick="doLogin()">MASUK</button>
+  <div class="error" id="err-msg">Username atau password salah</div>
+  <div class="footer-note">Default: <strong>admin</strong> / <strong>123123</strong></div>
+</div>
+<script>
+function togglePwd(){const i=document.getElementById('pwd');i.type=i.type==='password'?'text':'password';}
+function doLogin(){
+  const btn=document.getElementById('btn-login'),err=document.getElementById('err-msg');
+  const usr=document.getElementById('usr').value.trim(),pwd=document.getElementById('pwd').value;
+  if(!usr||!pwd){showErr('Username dan password wajib diisi');return;}
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>MEMERIKSA...';err.style.display='none';
+  fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usr,pwd})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok)window.location.href='/dashboard.html';
+      else{showErr('Username atau password salah');btn.disabled=false;btn.innerHTML='MASUK';}
+    }).catch(()=>{showErr('Koneksi terputus');btn.disabled=false;btn.innerHTML='MASUK';});
+}
+function showErr(msg){const e=document.getElementById('err-msg');e.textContent=msg;e.style.display='block';}
+window.onload=()=>document.getElementById('usr').focus();
+</script>
+</body>
+</html>

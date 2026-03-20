@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattAnalyzer — Log</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080e14;--panel:#0d1821;--card:#111e2b;--border:#1d3148;--border2:#243d58;--accent:#00d4ff;--accent2:#00ff9d;--warn:#f59e0b;--danger:#ff4d6d;--purple:#a78bfa;--text:#e2eaf2;--dim:#4a6580;--dim2:#6b8299;--mono:'JetBrains Mono',monospace;--sans:'Rajdhani',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;background-image:radial-gradient(ellipse 600px 300px at 50% 0%,rgba(0,212,255,.03) 0%,transparent 60%)}
+nav{background:rgba(13,24,33,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent);letter-spacing:2px}
+.nav-tabs{display:flex;gap:2px}
+.tab{padding:7px 16px;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--dim2);transition:all .2s;letter-spacing:.5px;text-decoration:none;display:inline-block}
+.tab:hover{background:rgba(0,212,255,.08);color:var(--text)}
+.tab.active{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.wrap{padding:20px 24px;max-width:1200px;margin:0 auto}
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filter-btn{padding:5px 14px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--dim2);transition:all .2s;letter-spacing:.5px;font-family:var(--sans)}
+.filter-btn:hover{border-color:var(--border2);color:var(--text)}
+.filter-btn.active{border-color:currentColor}
+.f-all.active{color:var(--accent);background:rgba(0,212,255,.08)}
+.f-system.active{color:var(--dim2);background:rgba(100,117,128,.1)}
+.f-wifi.active{color:var(--warn);background:rgba(245,158,11,.08)}
+.f-mqtt.active{color:var(--accent2);background:rgba(0,255,157,.08)}
+.f-batt.active{color:#60a5fa;background:rgba(96,165,250,.08)}
+.f-sensor.active{color:var(--purple);background:rgba(167,139,250,.08)}
+.f-alert.active{color:var(--danger);background:rgba(255,77,109,.08)}
+.f-ota.active{color:var(--accent);background:rgba(0,212,255,.08)}
+.spacer{flex:1}
+.auto-row{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim2);font-family:var(--mono)}
+.mini-toggle{width:34px;height:19px;background:rgba(0,0,0,.3);border-radius:10px;position:relative;cursor:pointer;transition:background .2s;border:1px solid var(--border)}
+.mini-toggle.on{background:rgba(0,212,255,.2);border-color:var(--accent)}
+.mini-toggle::after{content:'';position:absolute;width:13px;height:13px;background:var(--dim);border-radius:50%;top:2px;left:2px;transition:all .2s}
+.mini-toggle.on::after{left:17px;background:var(--accent);box-shadow:0 0 6px var(--accent)}
+.btn-sm{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--dim2);transition:all .2s;letter-spacing:.5px;font-family:var(--sans)}
+.btn-sm:hover{border-color:var(--border2);color:var(--text)}
+.btn-sm.danger{border-color:rgba(255,77,109,.3);color:var(--danger)}
+.btn-sm.danger:hover{background:rgba(255,77,109,.1)}
+/* Log */
+.log-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.log-header{display:grid;grid-template-columns:155px 80px 1fr;padding:8px 14px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--border);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+.log-body{max-height:68vh;overflow-y:auto;scroll-behavior:smooth}
+.log-body::-webkit-scrollbar{width:4px}
+.log-body::-webkit-scrollbar-track{background:transparent}
+.log-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.log-row{display:grid;grid-template-columns:155px 80px 1fr;padding:7px 14px;border-bottom:1px solid rgba(29,49,72,.5);font-size:12px;transition:background .1s;align-items:start}
+.log-row:last-child{border-bottom:none}
+.log-row:hover{background:rgba(0,212,255,.03)}
+.log-row.new{animation:logIn .3s ease}
+@keyframes logIn{from{background:rgba(0,212,255,.08)}to{background:transparent}}
+.log-time{font-family:var(--mono);font-size:10px;color:var(--dim);padding-top:1px}
+.log-cat{font-family:var(--mono);font-size:10px;font-weight:700;padding-top:1px}
+.log-msg{font-family:var(--mono);font-size:11px;color:var(--text);word-break:break-word;line-height:1.5}
+/* Cat colors */
+.cat-SYSTEM{color:var(--dim2)}
+.cat-WIFI{color:var(--warn)}
+.cat-MQTT{color:var(--accent2)}
+.cat-BATT{color:#60a5fa}
+.cat-SENSOR{color:var(--purple)}
+.cat-ALERT{color:var(--danger)}
+.cat-TELE{color:var(--accent)}
+.cat-OTA{color:var(--accent)}
+.empty{text-align:center;padding:48px;color:var(--dim);font-size:13px;font-family:var(--mono)}
+.status-bar{display:flex;justify-content:space-between;padding:7px 14px;background:rgba(0,0,0,.2);border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--dim)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand"><span>⚡</span>BATTANALYZER</div>
+  <div class="nav-tabs">
+    <a class="tab" href="dashboard.html">Dashboard</a>
+    <a class="tab" href="setting.html">Setting</a>
+    <a class="tab" href="system.html">System</a>
+    <a class="tab active" href="log.html">Log</a>
+  </div>
+  <div class="auto-row" style="color:var(--dim2)">
+    <span id="ws-status">WS: --</span>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="toolbar">
+    <button class="filter-btn f-all active"    id="f-all"    onclick="setFilter('all')">Semua</button>
+    <button class="filter-btn f-system"        id="f-SYSTEM" onclick="setFilter('SYSTEM')">⚙️ System</button>
+    <button class="filter-btn f-wifi"          id="f-WIFI"   onclick="setFilter('WIFI')">📶 WiFi</button>
+    <button class="filter-btn f-mqtt"          id="f-MQTT"   onclick="setFilter('MQTT')">📡 MQTT</button>
+    <button class="filter-btn f-batt"          id="f-BATT"   onclick="setFilter('BATT')">🔋 Batt</button>
+    <button class="filter-btn f-sensor"        id="f-SENSOR" onclick="setFilter('SENSOR')">🌡 Sensor</button>
+    <button class="filter-btn f-alert"         id="f-ALERT"  onclick="setFilter('ALERT')">🚨 Alert</button>
+    <button class="filter-btn f-ota"           id="f-OTA"    onclick="setFilter('OTA')">🚀 OTA</button>
+    <div class="spacer"></div>
+    <div class="auto-row">
+      <span>Live</span>
+      <div class="mini-toggle on" id="auto-toggle" onclick="toggleAuto()"></div>
+    </div>
+    <button class="btn-sm" onclick="loadLog()">↻ Refresh</button>
+    <button class="btn-sm danger" onclick="clearLog()">🗑 Clear</button>
+  </div>
+
+  <div class="log-wrap">
+    <div class="log-header">
+      <div>WAKTU</div><div>KATEGORI</div><div>PESAN</div>
+    </div>
+    <div class="log-body" id="log-body">
+      <div class="empty">Memuat log...</div>
+    </div>
+    <div class="status-bar">
+      <span id="log-count">0 entri</span>
+      <span id="log-filter-info">Filter: semua</span>
+    </div>
+  </div>
+</div>
+
+<script>
+let _filter='all',_autoOn=true,_ws,_wsRetry=0;
+
+// ── WebSocket untuk live log ──────────────────────────────────
+function wsConnect(){
+  _ws=new WebSocket('ws://'+location.hostname+'/ws');
+  _ws.onopen=()=>{_wsRetry=0;document.getElementById('ws-status').textContent='WS: ●';document.getElementById('ws-status').style.color='var(--accent2)';};
+  _ws.onclose=()=>{document.getElementById('ws-status').textContent='WS: ○';document.getElementById('ws-status').style.color='var(--danger)';setTimeout(wsConnect,2000+_wsRetry*500);_wsRetry=Math.min(_wsRetry+1,10);};
+  _ws.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      if(d.type==='log'&&_autoOn){prependLog(d);}
+    }catch(ex){}
+  };
+}
+
+function prependLog(e){
+  if(_filter!=='all'&&e.c!==_filter)return;
+  const body=document.getElementById('log-body');
+  const empty=body.querySelector('.empty');if(empty)empty.remove();
+  const row=makeRow(e,true);
+  body.insertBefore(row,body.firstChild);
+  // Max 200 rows di UI
+  while(body.children.length>200)body.removeChild(body.lastChild);
+  const cnt=document.getElementById('log-count');
+  cnt.textContent=(parseInt(cnt.textContent)||0)+1+' entri';
+}
+
+function makeRow(e,isNew=false){
+  const row=document.createElement('div');
+  row.className='log-row'+(isNew?' new':'');
+  const cat=e.c||'';
+  const msg=(e.m||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  row.innerHTML=`<div class="log-time">${e.t||''}</div><div class="log-cat cat-${cat}">[${cat}]</div><div class="log-msg">${msg}</div>`;
+  return row;
+}
+
+function setFilter(cat){
+  _filter=cat;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  const key=cat==='all'?'all':cat;
+  const btn=document.getElementById('f-'+key);if(btn)btn.classList.add('active');
+  document.getElementById('log-filter-info').textContent='Filter: '+(cat==='all'?'semua':cat);
+  loadLog();
+}
+
+function toggleAuto(){
+  _autoOn=!_autoOn;
+  document.getElementById('auto-toggle').className='mini-toggle'+(_autoOn?' on':'');
+}
+
+function loadLog(){
+  const url='/api/log?cat='+encodeURIComponent(_filter);
+  fetch(url).then(r=>r.json()).then(data=>{
+    const body=document.getElementById('log-body');
+    if(!data||!data.length){body.innerHTML='<div class="empty">Belum ada log'+(_filter!=='all'?' untuk kategori '+_filter:'')+'</div>';document.getElementById('log-count').textContent='0 entri';return;}
+    let html='';
+    data.forEach(e=>{
+      const cat=e.c||'';
+      const msg=(e.m||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html+=`<div class="log-row"><div class="log-time">${e.t||''}</div><div class="log-cat cat-${cat}">[${cat}]</div><div class="log-msg">${msg}</div></div>`;
+    });
+    body.innerHTML=html;
+    document.getElementById('log-count').textContent=data.length+' entri';
+  }).catch(()=>{});
+}
+
+function clearLog(){
+  if(!confirm('Hapus semua log?'))return;
+  fetch('/api/log/clear',{method:'POST'}).then(()=>loadLog());
+}
+
+wsConnect();
+loadLog();
+</script>
+</body>
+</html>
