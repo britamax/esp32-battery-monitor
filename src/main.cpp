@@ -78,65 +78,130 @@ void taskNetwork(void* param) {
     }
 }
 
+// ── Cooldown tracker per alarm event ─────────────────────────
+static unsigned long _alarmLastFired[ALARM_COUNT] = {0};
+
+static bool _alarmCooldownOk(int eventIdx) {
+    unsigned long coolMs = (unsigned long)nvs.getAlarmCool(eventIdx) * 60000UL;
+    unsigned long now = millis();
+    if (now - _alarmLastFired[eventIdx] >= coolMs) {
+        _alarmLastFired[eventIdx] = now;
+        return true;
+    }
+    return false;
+}
+
+static void _fireAlarm(int eventIdx, BuzzPattern defPattern,
+                        const String& mqttType, const String& mqttDetail,
+                        const String& teleType, const String& teleDetail,
+                        const char* logMsg) {
+    if (!nvs.getAlarmEn(eventIdx)) return;
+    if (!_alarmCooldownOk(eventIdx)) return;
+
+    // Buzzer
+    int buzz = nvs.getAlarmBuzz(eventIdx);
+    if (buzz > 0 && !btnHandler.isAlarmSnoozed()) {
+        buzzer.startAlarm((BuzzPattern)buzz);
+    }
+    // MQTT
+    if (nvs.getAlarmMqtt(eventIdx)) {
+        mqttMgr.publishAlert(mqttType, mqttDetail);
+    }
+    // Telegram
+    if (nvs.getAlarmTele(eventIdx)) {
+        teleBot.sendAlert(teleType, teleDetail);
+    }
+    // Log
+    String ts = ntpMgr.getTimeStr();
+    logger.add(LOG_ALERT, logMsg, ts.length() ? ts.c_str() : nullptr);
+}
+
 void taskAlert(void* param) {
-    Serial.println("[TASK-ALERT] Dimulai");
+    logger.add(LOG_SYSTEM, "taskAlert dimulai", nullptr);
     vTaskDelay(pdMS_TO_TICKS(3000));
 
     for (;;) {
-        // Cek alert seismik dari hardware interrupt queue
+        // ── Seismik ───────────────────────────────────────────
         if (seismic.isOnline && seismic.checkAlert()) {
-            if (!btnHandler.isAlarmSnoozed()) {
-                Serial.printf("[ALERT] GEMPA! mag=%.4fg\n", seismic.magnitude);
-                buzzer.startAlarm(BUZZ_QUAKE);
-                mqttMgr.publishAlert("GEMPA", "mag=" + String(seismic.magnitude, 4));
-                teleBot.sendAlert("GEMPA",
-                    "Magnitude: " + String(seismic.magnitude, 4) + "g\n"
-                    "Status: " + String(seismic.statusText()));
-                String ts = ntpMgr.getTimeStr();
-                logger.addf(LOG_ALERT, ts.length() ? ts.c_str() : nullptr,
-                    "GEMPA: %.4fg — %s", seismic.magnitude, seismic.statusText());
-            }
+            char detail[80];
+            snprintf(detail, sizeof(detail),
+                "Magnitude: %.4fg | Status: %s",
+                seismic.magnitude, seismic.statusText());
+            char logbuf[80];
+            snprintf(logbuf, sizeof(logbuf),
+                "GEMPA: %.4fg — %s", seismic.magnitude, seismic.statusText());
+
+            _fireAlarm(ALARM_QUAKE, BUZZ_QUAKE,
+                "GEMPA", "mag=" + String(seismic.magnitude, 4),
+                "GEMPA", String(detail),
+                logbuf);
         }
 
         float vbat = battMon.voltage;
-        if (vbat > 0.5f && !btnHandler.isAlarmSnoozed()) {
+        float ibat = battMon.current;
+
+        if (vbat > 0.5f) {
+            // ── Tegangan rendah ───────────────────────────────
             if (vbat < nvs.getVCutoff()) {
-                if (!buzzer.isActive) {
-                    buzzer.startAlarm(BUZZ_BATT_LOW);
-                    mqttMgr.publishAlert("VOLT_LOW", "v=" + String(vbat, 3));
-                    teleBot.sendAlert("Tegangan Rendah",
-                        "V: " + String(vbat, 3) + "V | Cutoff: " + String(nvs.getVCutoff(), 2) + "V");
-                    String ts = ntpMgr.getTimeStr();
-                    logger.addf(LOG_ALERT, ts.length() ? ts.c_str() : nullptr,
-                        "Tegangan rendah: %.3fV", vbat);
-                }
-                if (nvs.getCutoffEn() && !relayMgr.state[0]) {
+                char detail[60];
+                snprintf(detail, sizeof(detail),
+                    "V: %.3fV | Cutoff: %.2fV", vbat, nvs.getVCutoff());
+                char logbuf[60];
+                snprintf(logbuf, sizeof(logbuf), "Tegangan rendah: %.3fV", vbat);
+
+                _fireAlarm(ALARM_VOLT_LOW, BUZZ_BATT_LOW,
+                    "VOLT_LOW", "v=" + String(vbat, 3),
+                    "Tegangan Rendah", String(detail),
+                    logbuf);
+
+                // Auto cutoff relay 2
+                if (nvs.getCutoffEn() && !relayMgr.getCutoffState()) {
                     relayMgr.setCutoff(true);
-                    String ts = ntpMgr.getTimeStr();
-                    logger.add(LOG_ALERT, "Auto cutoff aktif", ts.length() ? ts.c_str() : nullptr);
+                    logger.add(LOG_ALERT, "Auto cutoff aktif (R2)",
+                        ntpMgr.getTimeStr().c_str());
                 }
             }
+
+            // ── Tegangan tinggi ───────────────────────────────
             if (vbat > nvs.getVMax()) {
-                if (!buzzer.isActive) {
-                    buzzer.startAlarm(BUZZ_BATT_LOW);
-                    mqttMgr.publishAlert("VOLT_HIGH", "v=" + String(vbat, 3));
-                    teleBot.sendAlert("Tegangan Tinggi",
-                        "V: " + String(vbat, 3) + "V | Max: " + String(nvs.getVMax(), 2) + "V");
-                    String ts = ntpMgr.getTimeStr();
-                    logger.addf(LOG_ALERT, ts.length() ? ts.c_str() : nullptr,
-                        "Tegangan tinggi: %.3fV", vbat);
-                }
+                char detail[60];
+                snprintf(detail, sizeof(detail),
+                    "V: %.3fV | Max: %.2fV", vbat, nvs.getVMax());
+                char logbuf[60];
+                snprintf(logbuf, sizeof(logbuf), "Tegangan tinggi: %.3fV", vbat);
+
+                _fireAlarm(ALARM_VOLT_HIGH, BUZZ_BATT_LOW,
+                    "VOLT_HIGH", "v=" + String(vbat, 3),
+                    "Tegangan Tinggi", String(detail),
+                    logbuf);
             }
-            if (fabsf(battMon.current) > nvs.getIMax() && !buzzer.isActive) {
-                buzzer.startAlarm(BUZZ_OVERCURR);
-                mqttMgr.publishAlert("OVERCURR", "i=" + String(battMon.current, 3));
-                teleBot.sendAlert("Arus Berlebih",
-                    "I: " + String(battMon.current, 3) + "A | Max: " + String(nvs.getIMax(), 2) + "A");
-                String ts = ntpMgr.getTimeStr();
-                logger.addf(LOG_ALERT, ts.length() ? ts.c_str() : nullptr,
-                    "Arus berlebih: %.3fA", battMon.current);
+
+            // ── Arus berlebih ─────────────────────────────────
+            if (fabsf(ibat) > nvs.getIMax()) {
+                char detail[60];
+                snprintf(detail, sizeof(detail),
+                    "I: %.3fA | Max: %.2fA", ibat, nvs.getIMax());
+                char logbuf[60];
+                snprintf(logbuf, sizeof(logbuf), "Arus berlebih: %.3fA", ibat);
+
+                _fireAlarm(ALARM_OVERCURR, BUZZ_OVERCURR,
+                    "OVERCURR", "i=" + String(ibat, 3),
+                    "Arus Berlebih", String(detail),
+                    logbuf);
+            }
+
+            // ── Suhu tinggi ───────────────────────────────────
+            if (envSensor.ahtOnline && envSensor.temperature > 50.0f) {
+                char detail[60];
+                snprintf(detail, sizeof(detail),
+                    "Suhu: %.1f°C", envSensor.temperature);
+                _fireAlarm(ALARM_TEMP_HIGH, BUZZ_SIRENE,
+                    "TEMP_HIGH", "t=" + String(envSensor.temperature, 1),
+                    "Suhu Tinggi", String(detail),
+                    "Suhu sensor tinggi!");
             }
         }
+
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
@@ -156,6 +221,7 @@ void setup() {
 
     nvs.begin();
     Serial.println("[NVS] OK");
+    logger.setMask(nvs.getLogMask());  // load log group mask dari NVS
 
     if (oled.begin()) {
         oled.setBrightness(nvs.getOledBright());
@@ -181,8 +247,9 @@ void setup() {
     battMon.begin();
     if (battMon.isOnline) {
         battMon.loadAccum();
-        Serial.printf("[INA226] OK — Chg=%.1fmAh Dis=%.1fmAh\n",
-            battMon.mahCharge, battMon.mahDischarge);
+        logger.addf(LOG_SENSOR, nullptr,
+            "INA226 OK — Chg=%.1fmAh Dis=%.1fmAh SoH=%.0f%%",
+            battMon.mahCharge, battMon.mahDischarge, battMon.soh);
     }
 
     envSensor.begin();
@@ -247,6 +314,10 @@ void loop() {
     wifiMgr.handle();
     buzzer.handle();
 
+    // OTA via Telegram — harus di main loop (blocking ~60 detik saat flash)
+    // processOta() return langsung jika tidak ada OTA pending
+    teleBot.processOta();
+
     // Relay manual toggle dari tombol fisik
     if (relayManualToggle) {
         relayManualToggle = false;
@@ -298,24 +369,52 @@ void loop() {
         envSensor.read();
         seismic.read();
 
-        oled.batt.voltage = battMon.voltage;
-        oled.batt.current = battMon.current;
-        oled.batt.soc     = battMon.soc;
-        oled.batt.status  = battMon.status;
-        oled.energy.mahChg = battMon.mahCharge;
-        oled.energy.mahDis = battMon.mahDischarge;
-        oled.energy.whChg  = battMon.whCharge;
-        oled.energy.whDis  = battMon.whDischarge;
-        oled.energy.cycles = battMon.cycleCount;
-        oled.env.temp     = envSensor.temperature;
-        oled.env.humidity = envSensor.humidity;
-        oled.env.pressure = envSensor.pressure;
-        oled.env.weather  = envSensor.weatherText;
+        // Init SoC dari voltage pada pembacaan pertama
+        static bool _socInitDone = false;
+        if (!_socInitDone && battMon.voltage > 0.5f) {
+            battMon.initSocFromVoltage();
+            _socInitDone = true;
+        }
+
+        // Cek pergantian hari untuk history
+        if (ntpMgr.synced) {
+            struct tm ti;
+            if (getLocalTime(&ti)) {
+                // unix day = seconds/86400
+                uint32_t today = (uint32_t)(mktime(&ti) / 86400);
+                if (battMon.histLastDay == 0) {
+                    battMon.histLastDay = today;
+                    nvs.saveHistDay(today);
+                } else if (today != battMon.histLastDay) {
+                    battMon.shiftHistory();
+                    battMon.histLastDay = today;
+                    nvs.saveHistDay(today);
+                }
+            }
+        }
+
+        oled.batt.voltage    = battMon.voltage;
+        oled.batt.current    = battMon.current;
+        oled.batt.soc        = battMon.soc;
+        oled.batt.soh        = battMon.soh;
+        oled.batt.internalR  = battMon.internalR;
+        oled.batt.status     = battMon.status;
+        oled.energy.mahChg   = battMon.mahCharge;
+        oled.energy.mahDis   = battMon.mahDischarge;
+        oled.energy.whChg    = battMon.whCharge;
+        oled.energy.whDis    = battMon.whDischarge;
+        oled.energy.cycles   = battMon.cycleCount;
+        oled.env.temp        = envSensor.temperature;
+        oled.env.humidity    = envSensor.humidity;
+        oled.env.pressure    = envSensor.pressure;
+        oled.env.weather     = envSensor.weatherText;
         oled.seismic.magnitude = seismic.magnitude;
         oled.seismic.status    = seismic.statusText();
-        oled.sys.uptime  = uptimeSec;
-        oled.sys.version = String(FW_VERSION);
-        oled.sys.mqttOk  = mqttMgr.isConnected;
+        oled.sys.uptime   = uptimeSec;
+        oled.sys.version  = String(FW_VERSION);
+        oled.sys.mqttOk   = mqttMgr.isConnected;
+        oled.sys.ntpOk    = ntpMgr.synced;
+        oled.sys.heapKb   = ESP.getFreeHeap() / 1024.0f;
 
         lastSensor = now;
     }

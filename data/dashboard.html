@@ -149,7 +149,54 @@ canvas.spark{width:100%;height:48px;display:block}
     </div>
   </div>
 
-  <!-- ROW 2: Sparkline + Relay -->
+  <!-- ROW 2: Kesehatan Baterai + History 7 Hari -->
+  <div class="grid-2">
+    <div class="card c-accent">
+      <div class="card-label">KESEHATAN BATERAI</div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="m-label">State of Health</div>
+          <div class="m-val accent" id="batt-soh">--.-</div>
+          <div class="m-label">%</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">C-Rate</div>
+          <div class="m-val" id="batt-crate">-.-</div>
+          <div class="m-label">C</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">Kapasitas Real</div>
+          <div class="m-val green" id="batt-capreal">----</div>
+          <div class="m-label">mAh</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">R Internal</div>
+          <div class="m-val" id="batt-ri2">-.--</div>
+          <div class="m-label">mΩ</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="m-label" style="margin-bottom:4px">STATE OF HEALTH</div>
+        <div class="soc-track"><div class="soc-fill" id="soh-fill" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">
+        HISTORY 7 HARI
+        <span style="display:flex;gap:4px;align-items:center">
+          <button onclick="setHistUnit('mah')" id="btn-mah" style="font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:rgba(0,212,255,.12);color:var(--accent);cursor:pointer;font-family:var(--mono)">mAh</button>
+          <button onclick="setHistUnit('wh')"  id="btn-wh"  style="font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim2);cursor:pointer;font-family:var(--mono)">Wh</button>
+        </span>
+      </div>
+      <canvas id="histChart" height="110" style="width:100%;display:block;margin-top:8px"></canvas>
+      <div style="display:flex;gap:14px;margin-top:6px;font-family:var(--mono);font-size:9px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,212,255,.7);display:inline-block"></span>Charge</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,77,109,.7);display:inline-block"></span>Discharge</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Sparkline + Relay -->
   <div class="grid-2">
     <div class="card c-accent">
       <div class="card-label">TREN TEGANGAN &amp; ARUS <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">60 titik</span></div>
@@ -164,13 +211,13 @@ canvas.spark{width:100%;height:48px;display:block}
       <div class="card-label">RELAY KONTROL</div>
       <div class="relay-grid">
         <div class="relay-item" id="relay-0" onclick="toggleRelay(1)">
-          <div class="relay-num">R1 CUTOFF</div>
-          <div class="relay-icon">🔌</div>
+          <div class="relay-num">R1 BEBAN</div>
+          <div class="relay-icon">💡</div>
           <div class="relay-state off" id="relay-state-0">OFF</div>
         </div>
         <div class="relay-item" id="relay-1" onclick="toggleRelay(2)">
-          <div class="relay-num">R2 BEBAN</div>
-          <div class="relay-icon">💡</div>
+          <div class="relay-num">R2 CUTOFF</div>
+          <div class="relay-icon">🔌</div>
           <div class="relay-state off" id="relay-state-1">OFF</div>
         </div>
         <div class="relay-item" id="relay-2" onclick="toggleRelay(3)">
@@ -187,7 +234,7 @@ canvas.spark{width:100%;height:48px;display:block}
     </div>
   </div>
 
-  <!-- ROW 3: Env + Seismic -->
+  <!-- ROW 4: Env + Seismic -->
   <div class="grid-2">
     <div class="card c-purple">
       <div class="card-label">LINGKUNGAN</div>
@@ -230,7 +277,7 @@ canvas.spark{width:100%;height:48px;display:block}
     </div>
   </div>
 
-  <div class="footer">BattAnalyzer v1.0.0 &nbsp;|&nbsp; <span id="footer-ip">---</span> &nbsp;|&nbsp; MQTT: <span id="footer-mqtt">--</span></div>
+  <div class="footer">BattAnalyzer v1.1.0 &nbsp;|&nbsp; <span id="footer-ip">---</span> &nbsp;|&nbsp; MQTT: <span id="footer-mqtt">--</span></div>
 </div>
 
 <script>
@@ -269,7 +316,17 @@ function updateUI(d){
   document.getElementById('batt-i').className='val-huge '+(i>0.05?'green':i<-0.05?'danger':'');
   document.getElementById('batt-p').textContent=fmt(b.p,2);
   document.getElementById('batt-ri').textContent=fmt(b.ri,1);
+  document.getElementById('batt-ri2').textContent=fmt(b.ri,1);
   document.getElementById('batt-soc').textContent=fmt(b.soc,0);
+
+  // SoH dan kapasitas
+  const soh = parseFloat(b.soh)||100;
+  document.getElementById('batt-soh').textContent=fmt(soh,1);
+  document.getElementById('batt-crate').textContent=fmt(b.crate,2);
+  document.getElementById('batt-capreal').textContent=b.capreal>10?fmt(b.capreal,0):'--';
+  const sohFill = document.getElementById('soh-fill');
+  sohFill.style.width = soh + '%';
+  sohFill.className = 'soc-fill' + (soh < 50 ? ' danger' : soh < 75 ? ' warn' : '');
   document.getElementById('soc-pct').textContent=fmt(b.soc,0)+'%';
   document.getElementById('batt-rt').textContent=b.rt>0?fmt(b.rt,0):'∞';
   document.getElementById('batt-cyc').textContent=b.cyc||0;
@@ -362,6 +419,75 @@ function toggleRelay(n){
     body:JSON.stringify({idx:n,on:!cur})});
 }
 
+// ── History Chart ─────────────────────────────────────────────
+let _histUnit = 'mah';
+let _histData  = {chg:[0,0,0,0,0,0,0], dis:[0,0,0,0,0,0,0], unit:'mAh'};
+
+function setHistUnit(u) {
+  _histUnit = u;
+  document.getElementById('btn-mah').style.background = u==='mah'?'rgba(0,212,255,.12)':'transparent';
+  document.getElementById('btn-mah').style.color      = u==='mah'?'var(--accent)':'var(--dim2)';
+  document.getElementById('btn-wh').style.background  = u==='wh' ?'rgba(0,212,255,.12)':'transparent';
+  document.getElementById('btn-wh').style.color       = u==='wh' ?'var(--accent)':'var(--dim2)';
+  fetch('/api/history?unit='+u).then(r=>r.json()).then(d=>{
+    _histData=d; drawHistChart();
+  }).catch(()=>{});
+}
+
+function drawHistChart() {
+  const canvas = document.getElementById('histChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 280;
+  const H = 110;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  const chg = _histData.chg || [0,0,0,0,0,0,0];
+  const dis  = _histData.dis || [0,0,0,0,0,0,0];
+  const n    = 7;
+  const maxVal = Math.max(...chg, ...dis, 1);
+
+  const padL = 4, padR = 4, padT = 8, padB = 16;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const slotW  = chartW / n;
+  const barW   = Math.max(4, slotW * 0.35);
+  const gap    = 2;
+
+  // X labels — hari (6=hari ini, 0=6 hari lalu)
+  const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+  const today = new Date().getDay(); // 0=Min
+
+  for (let i = 0; i < n; i++) {
+    const x = padL + i * slotW + slotW / 2;
+
+    // Bar charge
+    const hChg = (chg[i] / maxVal) * chartH;
+    ctx.fillStyle = 'rgba(0,212,255,.7)';
+    ctx.fillRect(x - barW - gap/2, padT + chartH - hChg, barW, hChg);
+
+    // Bar discharge
+    const hDis = (dis[i] / maxVal) * chartH;
+    ctx.fillStyle = 'rgba(255,77,109,.7)';
+    ctx.fillRect(x + gap/2, padT + chartH - hDis, barW, hDis);
+
+    // Label hari
+    const dayIdx = (today - (n - 1 - i) + 7) % 7;
+    ctx.fillStyle = i === n-1 ? 'rgba(0,212,255,.9)' : 'rgba(74,101,128,.8)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(i === n-1 ? 'Hari ini' : days[dayIdx], x, H - 3);
+  }
+}
+
+function loadHistory() {
+  fetch('/api/history?unit=' + _histUnit).then(r=>r.json()).then(d=>{
+    _histData = d;
+    drawHistChart();
+  }).catch(()=>{});
+}
+
 // ── Load sparkline history dari API ──────────────────────────
 function loadSpark(){
   fetch('/api/spark').then(r=>r.json()).then(d=>{
@@ -374,9 +500,11 @@ function loadSpark(){
 
 wsConnect();
 loadSpark();
+loadHistory();
 window.addEventListener('resize',()=>{
   drawSpark('sparkV',sparkVData,'rgba(0,212,255,.8)','rgba(0,212,255,.1)');
   drawSpark('sparkI',sparkIData,'rgba(0,255,157,.8)','rgba(0,255,157,.1)');
+  drawHistChart();
 });
 </script>
 </body>

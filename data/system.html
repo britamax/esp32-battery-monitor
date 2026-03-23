@@ -162,12 +162,12 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
 
   <hr class="div">
 
-  <!-- OTA Update -->
+  <!-- OTA Firmware Update -->
   <div class="ota-card">
     <div class="ota-title">🚀 OTA Firmware Update</div>
-    <div class="ota-sub">Upload file <code>.bin</code> — PlatformIO: .pio/build/esp32-c3-supermini/firmware.bin</div>
-    <div class="drop-zone" id="drop-zone" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
-      <input type="file" id="ota-file" accept=".bin" onchange="onFileSelect(this)">
+    <div class="ota-sub">File: <code>firmware.bin</code> — PlatformIO: <code>pio run -t build</code></div>
+    <div class="drop-zone" id="drop-zone" ondragover="onDrag(event,'fw',true)" ondragleave="onDrag(event,'fw',false)" ondrop="onDrop(event,'fw')">
+      <input type="file" id="ota-file" accept=".bin" onchange="onFileSelect(this,'fw')">
       <div class="drop-icon">💾</div>
       <div class="drop-text">Drag &amp; drop <strong>firmware.bin</strong> atau klik untuk pilih</div>
     </div>
@@ -177,7 +177,25 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
       <div class="progress-text" id="prog-text">0%</div>
     </div>
     <div class="ota-status" id="ota-status"></div>
-    <button class="btn-ota" id="btn-ota" onclick="doOTA()">✅ Flash Firmware</button>
+    <button class="btn-ota" id="btn-ota" onclick="doOTA('fw')">✅ Flash Firmware</button>
+  </div>
+
+  <!-- OTA Filesystem Update -->
+  <div class="ota-card" style="margin-top:12px">
+    <div class="ota-title">📁 OTA Filesystem Update <span style="font-size:11px;font-weight:400;color:var(--dim2);margin-left:8px">(HTML / LittleFS)</span></div>
+    <div class="ota-sub">File: <code>littlefs.bin</code> — PlatformIO: <code>pio run -t buildfs</code></div>
+    <div class="drop-zone" id="drop-zone-fs" ondragover="onDrag(event,'fs',true)" ondragleave="onDrag(event,'fs',false)" ondrop="onDrop(event,'fs')">
+      <input type="file" id="ota-file-fs" accept=".bin" onchange="onFileSelect(this,'fs')">
+      <div class="drop-icon">🗂️</div>
+      <div class="drop-text">Drag &amp; drop <strong>littlefs.bin</strong> atau klik untuk pilih</div>
+    </div>
+    <div class="file-info" id="file-info-fs"></div>
+    <div class="progress-wrap" id="prog-wrap-fs">
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill-fs"></div></div>
+      <div class="progress-text" id="prog-text-fs">0%</div>
+    </div>
+    <div class="ota-status" id="ota-status-fs"></div>
+    <button class="btn-ota" id="btn-ota-fs" onclick="doOTA('fs')">✅ Flash Filesystem</button>
   </div>
 
   <!-- Actions -->
@@ -245,29 +263,123 @@ function doRestart(){if(!confirm('Restart perangkat?'))return;fetch('/api/settin
 function doLogout(){fetch('/api/logout',{method:'POST'}).finally(()=>location.href='/login.html');}
 function doRollback(){if(!confirm('Rollback ke firmware sebelumnya?'))return;fetch('/api/ota/rollback',{method:'POST'}).then(r=>r.json()).then(d=>{alert(d.ok?'Rollback OK! Restart...':('Gagal: '+(d.msg||'Tidak ada firmware lama')));});}
 
-let _otaFile=null;
-function onDrag(e,on){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',on);}
-function onDrop(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setFile(f);}
-function onFileSelect(i){if(i.files[0])setFile(i.files[0]);}
-function setFile(f){
-  if(!f.name.endsWith('.bin')){showOtaSt('✗ File harus .bin',false);return;}
-  _otaFile=f;
-  const info=document.getElementById('file-info');info.style.display='block';info.textContent=f.name+' — '+(f.size/1024).toFixed(1)+' KB';
-  document.getElementById('btn-ota').style.display='block';document.getElementById('ota-status').style.display='none';
-}
-function doOTA(){
-  if(!_otaFile||!confirm('Flash firmware baru?\n\nPerangkat restart otomatis setelah selesai.'))return;
-  const btn=document.getElementById('btn-ota'),wrap=document.getElementById('prog-wrap'),fill=document.getElementById('prog-fill'),txt=document.getElementById('prog-text');
-  btn.disabled=true;btn.textContent='Uploading...';wrap.style.display='block';showOtaSt('',null);
-  const xhr=new XMLHttpRequest();xhr.open('POST','/api/ota',true);
-  xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);fill.style.width=p+'%';txt.textContent=p+'% — '+(e.loaded/1024).toFixed(0)+'/'+(e.total/1024).toFixed(0)+' KB';}};
-  xhr.onload=()=>{btn.disabled=false;btn.textContent='✅ Flash Firmware';if(xhr.status===200){fill.style.width='100%';fill.style.background='var(--accent2)';txt.textContent='100% — Selesai!';showOtaSt('✓ Upload berhasil! Restart dalam 5 detik...',true);btn.style.display='none';setTimeout(()=>location.href='/',8000);}else{showOtaSt('✗ Gagal: '+xhr.responseText,false);}};
-  xhr.onerror=()=>{btn.disabled=false;btn.textContent='✅ Flash Firmware';showOtaSt('✗ Koneksi terputus',false);};
-  const fd=new FormData();fd.append('firmware',_otaFile,_otaFile.name);xhr.send(fd);
-}
-function showOtaSt(msg,ok){const el=document.getElementById('ota-status');if(!msg){el.style.display='none';return;}el.style.display='block';el.style.background=ok?'#052e16':'#2d0a14';el.style.color=ok?'var(--accent2)':'var(--danger)';el.style.border='1px solid '+(ok?'rgba(0,255,157,.3)':'rgba(255,77,109,.3)');el.textContent=msg;}
+// ── OTA: support 'fw' (firmware) dan 'fs' (filesystem) ────────
+const _otaFiles = {fw: null, fs: null};
 
-update();setInterval(update,5000);
+function _id(type, base) {
+  return base + (type === 'fs' ? '-fs' : '');
+}
+
+function onDrag(e, type, on) {
+  e.preventDefault();
+  document.getElementById('drop-zone' + (type==='fs'?'-fs':'')).classList.toggle('drag', on);
+}
+
+function onDrop(e, type) {
+  e.preventDefault();
+  document.getElementById('drop-zone' + (type==='fs'?'-fs':'')).classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f, type);
+}
+
+function onFileSelect(input, type) {
+  if (input.files[0]) setFile(input.files[0], type);
+}
+
+function setFile(f, type) {
+  if (!f.name.endsWith('.bin')) {
+    showOtaSt(type, '✗ File harus .bin', false);
+    return;
+  }
+  // Validasi nama file — firmware.bin vs littlefs.bin
+  const isFw = type === 'fw';
+  const warnFs = isFw && f.name.includes('littlefs');
+  const warnFw = !isFw && !f.name.includes('littlefs') && !f.name.includes('spiffs');
+  if (warnFs) {
+    if (!confirm('⚠️ File ini sepertinya littlefs.bin, bukan firmware.bin.\nYakin flash sebagai firmware?')) return;
+  }
+  if (warnFw) {
+    if (!confirm('⚠️ File ini sepertinya bukan littlefs.bin.\nYakin flash sebagai filesystem?')) return;
+  }
+
+  _otaFiles[type] = f;
+  const info = document.getElementById('file-info' + (type==='fs'?'-fs':''));
+  info.style.display = 'block';
+  info.textContent = f.name + ' — ' + (f.size/1024).toFixed(1) + ' KB';
+  document.getElementById('btn-ota' + (type==='fs'?'-fs':'')).style.display = 'block';
+  showOtaSt(type, '', null);
+}
+
+function doOTA(type) {
+  const f = _otaFiles[type];
+  const label = type === 'fw' ? 'firmware' : 'filesystem';
+  if (!f || !confirm('Flash ' + label + ' baru?\n\nPerangkat restart otomatis setelah selesai.')) return;
+
+  const endpoint = type === 'fw' ? '/api/ota' : '/api/ota/fs';
+  const btnId    = 'btn-ota'   + (type==='fs'?'-fs':'');
+  const wrapId   = 'prog-wrap' + (type==='fs'?'-fs':'');
+  const fillId   = 'prog-fill' + (type==='fs'?'-fs':'');
+  const txtId    = 'prog-text' + (type==='fs'?'-fs':'');
+  const btnLabel = type === 'fw' ? '✅ Flash Firmware' : '✅ Flash Filesystem';
+
+  const btn  = document.getElementById(btnId);
+  const wrap = document.getElementById(wrapId);
+  const fill = document.getElementById(fillId);
+  const txt  = document.getElementById(txtId);
+
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+  wrap.style.display = 'block';
+  showOtaSt(type, '', null);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', endpoint, true);
+
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const p = Math.round(e.loaded / e.total * 100);
+      fill.style.width = p + '%';
+      txt.textContent = p + '% — ' + (e.loaded/1024).toFixed(0) + '/' + (e.total/1024).toFixed(0) + ' KB';
+    }
+  };
+
+  xhr.onload = () => {
+    btn.disabled = false;
+    btn.textContent = btnLabel;
+    if (xhr.status === 200) {
+      fill.style.width = '100%';
+      fill.style.background = 'var(--accent2)';
+      txt.textContent = '100% — Selesai!';
+      showOtaSt(type, '✓ Upload ' + label + ' berhasil! Restart dalam 5 detik...', true);
+      btn.style.display = 'none';
+      setTimeout(() => location.href = '/', 8000);
+    } else {
+      showOtaSt(type, '✗ Gagal: ' + xhr.responseText, false);
+    }
+  };
+
+  xhr.onerror = () => {
+    btn.disabled = false;
+    btn.textContent = btnLabel;
+    showOtaSt(type, '✗ Koneksi terputus', false);
+  };
+
+  const fd = new FormData();
+  fd.append(type === 'fw' ? 'firmware' : 'filesystem', f, f.name);
+  xhr.send(fd);
+}
+
+function showOtaSt(type, msg, ok) {
+  const el = document.getElementById('ota-status' + (type==='fs'?'-fs':''));
+  if (!msg) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.style.background = ok ? '#052e16' : '#2d0a14';
+  el.style.color = ok ? 'var(--accent2)' : 'var(--danger)';
+  el.style.border = '1px solid ' + (ok ? 'rgba(0,255,157,.3)' : 'rgba(255,77,109,.3)');
+  el.textContent = msg;
+}
+
+update(); setInterval(update, 5000);
 </script>
 </body>
 </html>

@@ -68,18 +68,78 @@ public:
 
     // ── Battery Parameters ─────────────────────────────────────
     float getVMax()           { return _p.getFloat(NVS_V_MAX,     DEF_V_MAX); }
+    float getVNom()           { return _p.getFloat(NVS_V_NOM,     DEF_V_NOM); }
     float getVCutoff()        { return _p.getFloat(NVS_V_CUTOFF,  DEF_V_CUTOFF); }
     float getIMax()           { return _p.getFloat(NVS_I_MAX,     DEF_I_MAX); }
     float getCapNominal()     { return _p.getFloat(NVS_CAP_NOMINAL, DEF_CAP_NOMINAL); }
     bool  getCutoffEn()       { return _p.getBool(NVS_CUTOFF_EN,  DEF_CUTOFF_EN); }
     float getShuntOhms()      { return _p.getFloat(NVS_SHUNT_OHMS, INA226_SHUNT_OHMS); }
+    String getBattType()      { return _p.getString(NVS_BATT_TYPE,  DEF_BATT_TYPE); }
+    int    getBattCells()     { return _p.getInt(NVS_BATT_CELLS,    DEF_BATT_CELLS); }
+    int    getSocMethod()     { return _p.getInt(NVS_SOC_METHOD,    DEF_SOC_METHOD); }
+    float  getSocInit()       { return _p.getFloat(NVS_SOC_INIT,    50.0f); }
+    float  getCapReal()       { return _p.getFloat(NVS_CAP_REAL,    0.0f); }
+    float  getSoH()           { return _p.getFloat(NVS_SOH,         100.0f); }
 
     void setVMax(float v)         { _p.putFloat(NVS_V_MAX,      v); }
+    void setVNom(float v)         { _p.putFloat(NVS_V_NOM,      v); }
     void setVCutoff(float v)      { _p.putFloat(NVS_V_CUTOFF,   v); }
     void setIMax(float v)         { _p.putFloat(NVS_I_MAX,      v); }
     void setCapNominal(float v)   { _p.putFloat(NVS_CAP_NOMINAL, v); }
     void setCutoffEn(bool v)      { _p.putBool(NVS_CUTOFF_EN,   v); }
     void setShuntOhms(float v)    { _p.putFloat(NVS_SHUNT_OHMS, v); }
+    void setBattType(String v)    { _p.putString(NVS_BATT_TYPE,  v); }
+    void setBattCells(int v)      { _p.putInt(NVS_BATT_CELLS,    v); }
+    void setSocMethod(int v)      { _p.putInt(NVS_SOC_METHOD,    v); }
+    void setSocInit(float v)      { _p.putFloat(NVS_SOC_INIT,    v); }
+    void setCapReal(float v)      { _p.putFloat(NVS_CAP_REAL,    v); }
+    void setSoH(float v)          { _p.putFloat(NVS_SOH,         v); }
+
+    // ── INA226 Advanced Config ─────────────────────────────────
+    int   getInaAvg()         { return _p.getInt(NVS_INA_AVG,   DEF_INA_AVG); }
+    int   getInaVConv()       { return _p.getInt(NVS_INA_VCONV, DEF_INA_VCONV); }
+    int   getInaIConv()       { return _p.getInt(NVS_INA_ICONV, DEF_INA_ICONV); }
+    int   getInaMode()        { return _p.getInt(NVS_INA_MODE,  DEF_INA_MODE); }
+    float getInaIOffset()     { return _p.getFloat(NVS_INA_I_OFFSET, 0.0f); }
+    float getInaVOffset()     { return _p.getFloat(NVS_INA_V_OFFSET, 0.0f); }
+
+    void setInaAvg(int v)         { _p.putInt(NVS_INA_AVG,     v); }
+    void setInaVConv(int v)       { _p.putInt(NVS_INA_VCONV,   v); }
+    void setInaIConv(int v)       { _p.putInt(NVS_INA_ICONV,   v); }
+    void setInaMode(int v)        { _p.putInt(NVS_INA_MODE,    v); }
+    void setInaIOffset(float v)   { _p.putFloat(NVS_INA_I_OFFSET, v); }
+    void setInaVOffset(float v)   { _p.putFloat(NVS_INA_V_OFFSET, v); }
+
+    // ── Alarm Config ───────────────────────────────────────────
+    // Per event: en=aktif, buzz=BuzzPattern(0=off), tele, mqtt, cool=menit
+    bool  getAlarmEn(int n)   { char k[14]; snprintf(k,sizeof(k),"alm%d_en",n);   return _p.getBool(k, true); }
+    int   getAlarmBuzz(int n) { char k[14]; snprintf(k,sizeof(k),"alm%d_bz",n);   return _p.getInt(k, n+3); }  // default pattern berbeda per event
+    bool  getAlarmTele(int n) { char k[14]; snprintf(k,sizeof(k),"alm%d_tl",n);   return _p.getBool(k, true); }
+    bool  getAlarmMqtt(int n) { char k[14]; snprintf(k,sizeof(k),"alm%d_mq",n);   return _p.getBool(k, true); }
+    int   getAlarmCool(int n) { char k[14]; snprintf(k,sizeof(k),"alm%d_cd",n);   return _p.getInt(k, 5); }  // default 5 menit
+
+    void  setAlarm(int n, bool en, int buzz, bool tele, bool mqtt, int cool) {
+        char k[14];
+        snprintf(k,sizeof(k),"alm%d_en",n); _p.putBool(k,en);
+        snprintf(k,sizeof(k),"alm%d_bz",n); _p.putInt(k,buzz);
+        snprintf(k,sizeof(k),"alm%d_tl",n); _p.putBool(k,tele);
+        snprintf(k,sizeof(k),"alm%d_mq",n); _p.putBool(k,mqtt);
+        snprintf(k,sizeof(k),"alm%d_cd",n); _p.putInt(k,cool);
+    }
+
+    // ── History 7 Hari ─────────────────────────────────────────
+    // Simpan sebagai blob bytes (7 × float = 28 bytes per array)
+    void saveHistChgMah(float* arr) { _p.putBytes(NVS_HIST_CHG_MAH, arr, HISTORY_DAYS * sizeof(float)); }
+    void saveHistDisMah(float* arr) { _p.putBytes(NVS_HIST_DIS_MAH, arr, HISTORY_DAYS * sizeof(float)); }
+    void saveHistChgWh(float* arr)  { _p.putBytes(NVS_HIST_CHG_WH,  arr, HISTORY_DAYS * sizeof(float)); }
+    void saveHistDisWh(float* arr)  { _p.putBytes(NVS_HIST_DIS_WH,  arr, HISTORY_DAYS * sizeof(float)); }
+    void saveHistDay(uint32_t d)    { _p.putUInt(NVS_HIST_DATE, d); }
+
+    bool loadHistChgMah(float* arr) { return _p.getBytes(NVS_HIST_CHG_MAH, arr, HISTORY_DAYS * sizeof(float)) > 0; }
+    bool loadHistDisMah(float* arr) { return _p.getBytes(NVS_HIST_DIS_MAH, arr, HISTORY_DAYS * sizeof(float)) > 0; }
+    bool loadHistChgWh(float* arr)  { return _p.getBytes(NVS_HIST_CHG_WH,  arr, HISTORY_DAYS * sizeof(float)) > 0; }
+    bool loadHistDisWh(float* arr)  { return _p.getBytes(NVS_HIST_DIS_WH,  arr, HISTORY_DAYS * sizeof(float)) > 0; }
+    uint32_t loadHistDay()          { return _p.getUInt(NVS_HIST_DATE, 0); }
 
     // ── Accumulated Energy ─────────────────────────────────────
     float getMahCharge()    { return _p.getFloat(NVS_MAH_CHARGE,    0.0f); }
@@ -163,18 +223,26 @@ public:
     int    getMqttInterval()  { return _p.getInt(NVS_MQTT_INTERVAL, DEF_MQTT_INTERVAL); }
     int    getMqttQos()       { return _p.getInt(NVS_MQTT_QOS,    0); }
     bool   getMqttHa()        { return _p.getBool(NVS_MQTT_HA,    true); }
+    String getMqttMode()      { return _p.getString(NVS_MQTT_MODE, DEF_MQTT_MODE); }
+    String getMqttWsPath()    { return _p.getString(NVS_MQTT_WS_PATH, DEF_MQTT_WS_PATH); }
+    // Helper: cek jenis transport dari mode string
+    bool   isMqttTls()        { String m = getMqttMode(); return m == "ssl" || m == "wss"; }
+    bool   isMqttWs()         { String m = getMqttMode(); return m == "ws"  || m == "wss"; }
 
     void setMqtt(bool en, String host, int port, String user, String pass,
-                 String topic, int interval, int qos, bool ha) {
-        _p.putBool(NVS_MQTT_EN,       en);
-        _p.putString(NVS_MQTT_HOST,   host);
-        _p.putInt(NVS_MQTT_PORT,      port);
-        _p.putString(NVS_MQTT_USER,   user);
-        _p.putString(NVS_MQTT_PASS,   pass);
-        _p.putString(NVS_MQTT_TOPIC,  topic);
-        _p.putInt(NVS_MQTT_INTERVAL,  interval);
-        _p.putInt(NVS_MQTT_QOS,       qos);
-        _p.putBool(NVS_MQTT_HA,       ha);
+                 String topic, int interval, int qos, bool ha, String mode,
+                 String wsPath) {
+        _p.putBool(NVS_MQTT_EN,         en);
+        _p.putString(NVS_MQTT_HOST,     host);
+        _p.putInt(NVS_MQTT_PORT,        port);
+        _p.putString(NVS_MQTT_USER,     user);
+        _p.putString(NVS_MQTT_PASS,     pass);
+        _p.putString(NVS_MQTT_TOPIC,    topic);
+        _p.putInt(NVS_MQTT_INTERVAL,    interval);
+        _p.putInt(NVS_MQTT_QOS,         qos);
+        _p.putBool(NVS_MQTT_HA,         ha);
+        _p.putString(NVS_MQTT_MODE,     mode);
+        _p.putString(NVS_MQTT_WS_PATH,  wsPath.length() > 0 ? wsPath : "/");
     }
 
     // ── Telegram ───────────────────────────────────────────────
@@ -218,7 +286,9 @@ public:
         snprintf(k,sizeof(k),"rly%d_day",n); _p.putInt(k,day);
     }
 
-    // ── Reset ──────────────────────────────────────────────────
+    // ── Log mask ───────────────────────────────────────────────
+    uint32_t getLogMask()         { return _p.getUInt(NVS_LOG_MASK, LOG_MASK_DEFAULT); }
+    void     setLogMask(uint32_t m) { _p.putUInt(NVS_LOG_MASK, m); }
     void factoryReset()    { _p.clear(); }
     void clearWifiOnly() {
         _p.remove(NVS_WIFI_SSID); _p.remove(NVS_WIFI_PASS);

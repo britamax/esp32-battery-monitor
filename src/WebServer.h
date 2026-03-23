@@ -96,6 +96,9 @@ private:
         b["i"]    = round(battMon.current * 1000) / 1000.0;
         b["p"]    = round(battMon.power   * 100)  / 100.0;
         b["soc"]  = battMon.soc;
+        b["soh"]  = round(battMon.soh * 10) / 10.0;
+        b["crate"]= round(battMon.cRate * 100) / 100.0;
+        b["capreal"] = round(battMon.capReal);
         b["st"]   = battMon.status;
         b["ri"]   = round(battMon.internalR * 10) / 10.0;
         b["rt"]   = round(battMon.runtimeMin * 10) / 10.0;
@@ -212,6 +215,44 @@ private:
             req->send(200, "application/json", battMon.sparklineJson());
         });
 
+        // ── API: History 7 hari ────────────────────────────────
+        _server.on("/api/history", HTTP_GET, [](AsyncWebServerRequest* req) {
+            AUTH_OR_REDIRECT(req)
+            bool useWh = req->hasParam("unit") &&
+                         req->getParam("unit")->value() == "wh";
+            req->send(200, "application/json", battMon.historyJson(useWh));
+        });
+
+        // ── API: Kalibrasi INA ─────────────────────────────────
+        _server.on("/api/batt/cal_offset", HTTP_POST, [](AsyncWebServerRequest* req) {
+            AUTH_OR_REDIRECT(req)
+            battMon.calibrateCurrentOffset();
+            char buf[80];
+            snprintf(buf, sizeof(buf),
+                "{\"ok\":true,\"offset\":%.5f}", nvs.getInaIOffset());
+            req->send(200, "application/json", String(buf));
+        });
+
+        _server.on("/api/batt/cal_shunt", HTTP_POST,
+            [](AsyncWebServerRequest* req){},
+            nullptr,
+            [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+                AUTH_OR_REDIRECT(req)
+                JsonDocument doc;
+                if (deserializeJson(doc, data, len)) { req->send(400); return; }
+                float actual = doc["actual_a"].as<float>();
+                if (fabsf(actual) < 0.1f) {
+                    req->send(200, "application/json",
+                        "{\"ok\":false,\"msg\":\"Arus terlalu kecil\"}");
+                    return;
+                }
+                battMon.calibrateShuntActual(actual);
+                char buf[80];
+                snprintf(buf, sizeof(buf),
+                    "{\"ok\":true,\"shunt\":%.5f}", nvs.getShuntOhms());
+                req->send(200, "application/json", String(buf));
+            });
+
         // ── API: Log ───────────────────────────────────────────
         _server.on("/api/log", HTTP_GET, [](AsyncWebServerRequest* req) {
             AUTH_OR_REDIRECT(req)
@@ -224,6 +265,34 @@ private:
             logger.clear();
             req->send(200, "application/json", "{\"ok\":true}");
         });
+
+        // ── API: Log mask — GET status, POST update ────────────
+        _server.on("/api/log/mask", HTTP_GET, [](AsyncWebServerRequest* req) {
+            AUTH_OR_REDIRECT(req)
+            req->send(200, "application/json", logger.maskToJson());
+        });
+
+        _server.on("/api/log/mask", HTTP_POST,
+            [](AsyncWebServerRequest* req){},
+            nullptr,
+            [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+                AUTH_OR_REDIRECT(req)
+                JsonDocument doc;
+                if (deserializeJson(doc, data, len)) { req->send(400); return; }
+                uint32_t m = 0;
+                if (doc["SYSTEM"].as<bool>()) m |= LOG_MASK_SYSTEM;
+                if (doc["WIFI"].as<bool>())   m |= LOG_MASK_WIFI;
+                if (doc["MQTT"].as<bool>())   m |= LOG_MASK_MQTT;
+                if (doc["SENSOR"].as<bool>()) m |= LOG_MASK_SENSOR;
+                if (doc["BATT"].as<bool>())   m |= LOG_MASK_BATT;
+                if (doc["ALERT"].as<bool>())  m |= LOG_MASK_ALERT;
+                if (doc["TELE"].as<bool>())   m |= LOG_MASK_TELE;
+                if (doc["OTA"].as<bool>())    m |= LOG_MASK_OTA;
+                if (doc["DEBUG"].as<bool>())  m |= LOG_MASK_DEBUG;
+                logger.setMask(m);
+                nvs.setLogMask(m);
+                req->send(200, "application/json", "{\"ok\":true}");
+            });
 
         // ── API: WiFi Scan ─────────────────────────────────────
         // ── API: Scan WiFi (async, non-blocking) ──────────────
@@ -325,11 +394,34 @@ private:
             doc["ntp_offset"]= nvs.getNtpOffset();
             // Battery
             doc["v_max"]     = nvs.getVMax();
+            doc["v_nom"]     = nvs.getVNom();
             doc["v_cutoff"]  = nvs.getVCutoff();
             doc["i_max"]     = nvs.getIMax();
             doc["cap_nom"]   = nvs.getCapNominal();
             doc["cutoff_en"] = nvs.getCutoffEn();
-            doc["shunt"]     = nvs.getShuntOhms() * 1000.0f;  // mΩ
+            doc["shunt"]     = nvs.getShuntOhms() * 1000.0f;
+            doc["batt_type"] = nvs.getBattType();
+            doc["batt_cells"]= nvs.getBattCells();
+            doc["soc_method"]= nvs.getSocMethod();
+            doc["cap_real"]  = nvs.getCapReal();
+            doc["soh"]       = nvs.getSoH();
+            // INA226 advanced
+            doc["ina_avg"]   = nvs.getInaAvg();
+            doc["ina_vconv"] = nvs.getInaVConv();
+            doc["ina_iconv"] = nvs.getInaIConv();
+            doc["ina_mode"]  = nvs.getInaMode();
+            doc["ina_ioff"]  = nvs.getInaIOffset();
+            doc["ina_voff"]  = nvs.getInaVOffset();
+            // Alarm config
+            JsonArray alarms = doc["alarms"].to<JsonArray>();
+            for (int i = 0; i < ALARM_COUNT; i++) {
+                JsonObject ao = alarms.add<JsonObject>();
+                ao["en"]   = nvs.getAlarmEn(i);
+                ao["buzz"] = nvs.getAlarmBuzz(i);
+                ao["tele"] = nvs.getAlarmTele(i);
+                ao["mqtt"] = nvs.getAlarmMqtt(i);
+                ao["cool"] = nvs.getAlarmCool(i);
+            }
             // MQTT
             doc["mqtt_en"]    = nvs.getMqttEn();
             doc["mqtt_host"]  = nvs.getMqttHost();
@@ -339,6 +431,8 @@ private:
             doc["mqtt_intv"]  = nvs.getMqttInterval();
             doc["mqtt_qos"]   = nvs.getMqttQos();
             doc["mqtt_ha"]    = nvs.getMqttHa();
+            doc["mqtt_mode"]  = nvs.getMqttMode();
+            doc["mqtt_wspath"]= nvs.getMqttWsPath();
             // Alert/Seismic
             doc["seis_thr"]   = nvs.getSeismicThr();
             doc["seis_cal"]   = nvs.isSeismicCal();
@@ -405,7 +499,11 @@ private:
                         ntpReloadReq = true;
 
                     } else if (type == "battery") {
+                        nvs.setBattType(body["batt_type"].as<String>());
+                        nvs.setBattCells(body["batt_cells"].as<int>());
+                        nvs.setSocMethod(body["soc_method"].as<int>());
                         nvs.setVMax(body["v_max"].as<float>());
+                        nvs.setVNom(body["v_nom"].as<float>());
                         nvs.setVCutoff(body["v_cutoff"].as<float>());
                         nvs.setIMax(body["i_max"].as<float>());
                         nvs.setCapNominal(body["cap_nom"].as<float>());
@@ -427,11 +525,34 @@ private:
                                     body["mqtt_topic"].as<String>(),
                                     body["mqtt_intv"].as<int>(),
                                     body["mqtt_qos"].as<int>(),
-                                    body["mqtt_ha"].as<bool>());
+                                    body["mqtt_ha"].as<bool>(),
+                                    body["mqtt_mode"].as<String>(),
+                                    body["mqtt_wspath"].as<String>());
                         req->send(200, "application/json", "{\"ok\":true}");
                         mqttReloadReq = true;
 
-                    } else if (type == "seismic") {
+                    } else if (type == "ina") {
+                        nvs.setInaAvg(body["ina_avg"].as<int>());
+                        nvs.setInaVConv(body["ina_vconv"].as<int>());
+                        nvs.setInaIConv(body["ina_iconv"].as<int>());
+                        nvs.setInaMode(body["ina_mode"].as<int>());
+                        nvs.setInaIOffset(body["ina_ioff"].as<float>());
+                        nvs.setInaVOffset(body["ina_voff"].as<float>());
+                        battMon.reloadInaConfig();
+                        req->send(200, "application/json", "{\"ok\":true}");
+
+                    } else if (type == "alarm") {
+                        JsonArray arr = body["alarms"].as<JsonArray>();
+                        for (int i = 0; i < (int)arr.size() && i < ALARM_COUNT; i++) {
+                            JsonObject ao = arr[i].as<JsonObject>();
+                            nvs.setAlarm(i,
+                                ao["en"].as<bool>(),
+                                ao["buzz"].as<int>(),
+                                ao["tele"].as<bool>(),
+                                ao["mqtt"].as<bool>(),
+                                ao["cool"].as<int>());
+                        }
+                        req->send(200, "application/json", "{\"ok\":true}");
                         nvs.setSeismicThr(body["seis_thr"].as<float>());
                         seismic.setThreshold(body["seis_thr"].as<float>());
                         if (nvs.isLocSet()) {}  // lokasi sudah set
@@ -566,7 +687,81 @@ private:
             }
         });
 
-        // ── Setup Wizard (tanpa auth) ──────────────────────────
+        // ── API: OTA Filesystem (LittleFS) ─────────────────────
+        // Upload littlefs.bin → flash ke partisi spiffs (U_SPIFFS)
+        // PlatformIO: pio run -t buildfs → .pio/build/.../littlefs.bin
+        _server.on("/api/ota/fs", HTTP_POST,
+            [](AsyncWebServerRequest* req) {
+                if (!sessionMgr.isValid(req)) { req->send(401, "text/plain", "Unauthorized"); return; }
+                bool ok = !Update.hasError();
+                if (ok) {
+                    req->send(200, "text/plain", "OK");
+                    String ts = ntpMgr.getTimeStr();
+                    logger.add(LOG_OTA, "OTA filesystem sukses, restart...",
+                               ts.length() ? ts.c_str() : nullptr);
+                    delay(1000); ESP.restart();
+                } else {
+                    String err = String("Gagal: ") + Update.errorString();
+                    Serial.println("[OTA-FS] " + err);
+                    req->send(500, "text/plain", err);
+                }
+            },
+            [](AsyncWebServerRequest* req, String fn, size_t idx, uint8_t* data, size_t len, bool final) {
+                if (!sessionMgr.isValid(req)) return;
+                if (idx == 0) {
+                    Serial.printf("[OTA-FS] Start: %s\n", fn.c_str());
+                    // Ambil ukuran dari Content-Length header jika ada
+                    size_t fsSize = UPDATE_SIZE_UNKNOWN;
+                    if (req->hasHeader("Content-Length")) {
+                        fsSize = req->header("Content-Length").toInt();
+                        Serial.printf("[OTA-FS] Size dari header: %u bytes\n", fsSize);
+                    }
+                    // Hentikan LittleFS sebelum flash partisi
+                    LittleFS.end();
+                    if (!Update.begin(fsSize, U_SPIFFS)) {
+                        Serial.printf("[OTA-FS] begin error: %s\n", Update.errorString());
+                        return;
+                    }
+                    Serial.println("[OTA-FS] Update.begin OK");
+                }
+                if (len > 0) {
+                    if (Update.write(data, len) != len)
+                        Serial.printf("[OTA-FS] write error: %s\n", Update.errorString());
+                }
+                if (final) {
+                    if (Update.end(true))
+                        Serial.printf("[OTA-FS] OK %u bytes total\n", idx + len);
+                    else
+                        Serial.printf("[OTA-FS] end error: %s\n", Update.errorString());
+                }
+            });
+
+        // ── API: Test Hardware (relay + buzzer) ────────────────
+        // GET /api/test/relay?pin=0&state=1  → set relay langsung via GPIO
+        // GET /api/test/buzz?pattern=1       → test pola buzzer
+        _server.on("/api/test/relay", HTTP_GET, [](AsyncWebServerRequest* req) {
+            AUTH_OR_REDIRECT(req)
+            int pin   = req->hasParam("pin")   ? req->getParam("pin")->value().toInt()   : 0;
+            int state = req->hasParam("state") ? req->getParam("state")->value().toInt() : 0;
+            if (pin < 0 || pin > 3) { req->send(400, "application/json", "{\"ok\":false,\"msg\":\"pin 0-3\"}"); return; }
+            relayMgr.set(pin, state != 0);
+            char buf[80];
+            snprintf(buf, sizeof(buf),
+                "{\"ok\":true,\"relay\":%d,\"state\":%s,\"gpio\":%d,\"level\":\"%s\"}",
+                pin+1, state?"true":"false",
+                relayMgr.pins[pin], state?"ON(HIGH)":"OFF(LOW)");
+            req->send(200, "application/json", String(buf));
+        });
+
+        _server.on("/api/test/buzz", HTTP_GET, [](AsyncWebServerRequest* req) {
+            AUTH_OR_REDIRECT(req)
+            int pattern = req->hasParam("pattern") ? req->getParam("pattern")->value().toInt() : 1;
+            if (pattern < 0 || pattern > 8) pattern = 1;
+            buzzer.play((BuzzPattern)pattern);
+            char buf[60];
+            snprintf(buf, sizeof(buf), "{\"ok\":true,\"pattern\":%d}", pattern);
+            req->send(200, "application/json", String(buf));
+        });
         _server.on("/setup", HTTP_GET, [](AsyncWebServerRequest* req) {
             req->send(LittleFS, "/setup.html", "text/html");
         });

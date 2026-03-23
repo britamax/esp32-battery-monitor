@@ -100,14 +100,16 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
 
 <div class="wrap">
   <div class="sec-tabs">
-    <button class="stab active" onclick="showSec('wifi')">📶 WiFi</button>
-    <button class="stab" onclick="showSec('device')">🖥 Device</button>
-    <button class="stab" onclick="showSec('battery')">🔋 Battery</button>
-    <button class="stab" onclick="showSec('relay')">⚡ Relay</button>
-    <button class="stab" onclick="showSec('mqtt')">📡 MQTT</button>
-    <button class="stab" onclick="showSec('env')">🌡 Env</button>
-    <button class="stab" onclick="showSec('seismic')">🌍 Seismic</button>
-    <button class="stab" onclick="showSec('telegram')">✈️ Telegram</button>
+    <button class="stab active" onclick="showSec('wifi',this)">📶 WiFi</button>
+    <button class="stab" onclick="showSec('device',this)">🖥 Device</button>
+    <button class="stab" onclick="showSec('battery',this)">🔋 Battery</button>
+    <button class="stab" onclick="showSec('ina',this)">⚡ INA226</button>
+    <button class="stab" onclick="showSec('alarm',this)">🔔 Alarm</button>
+    <button class="stab" onclick="showSec('relay',this)">🔌 Relay</button>
+    <button class="stab" onclick="showSec('mqtt',this)">📡 MQTT</button>
+    <button class="stab" onclick="showSec('env',this)">🌡 Env</button>
+    <button class="stab" onclick="showSec('seismic',this)">🌍 Seismic</button>
+    <button class="stab" onclick="showSec('telegram',this)">✈️ Telegram</button>
   </div>
 
   <!-- ── WiFi ─────────────────────────────────────────────── -->
@@ -182,13 +184,14 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
       <div class="form-row" style="margin-top:12px">
         <div class="form-group"><label>Halaman Aktif</label>
           <select id="oled_page">
-            <option value="0">0 - Status WiFi</option>
+            <option value="0">0 - WiFi + Status</option>
             <option value="1">1 - Baterai</option>
-            <option value="2">2 - Daya</option>
+            <option value="2">2 - Power</option>
             <option value="3">3 - Akumulasi</option>
             <option value="4">4 - Lingkungan</option>
             <option value="5">5 - Seismik</option>
             <option value="6">6 - Sistem</option>
+            <option value="7">7 - INA Debug</option>
           </select>
         </div>
         <div class="form-group"><label>Durasi Slide (detik)</label><input type="number" id="oled_dur" min="1" max="30" placeholder="3"></div>
@@ -214,19 +217,56 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
   <!-- ── Battery ───────────────────────────────────────────── -->
   <div class="section" id="sec-battery">
     <div class="card">
-      <div class="card-title"><span>🔋</span> Parameter Baterai</div>
+      <div class="card-title"><span>🔋</span> Tipe &amp; Sel Baterai</div>
       <div class="form-row">
-        <div class="form-group"><label>Tegangan Maks (V)</label><input type="number" id="v_max" step="0.05" min="3.0" max="5.0" placeholder="4.20"></div>
-        <div class="form-group"><label>Tegangan Cutoff (V)</label><input type="number" id="v_cutoff" step="0.05" min="2.0" max="4.0" placeholder="3.00"></div>
-        <div class="form-group"><label>Arus Maks Alert (A)</label><input type="number" id="i_max" step="0.1" min="0.1" max="30.0" placeholder="3.00"></div>
+        <div class="form-group">
+          <label>Tipe Baterai</label>
+          <select id="batt_type" onchange="onBattTypeChange(this.value)">
+            <option value="lifepo4">LiFePO4 (3.2V/sel)</option>
+            <option value="liion">Li-Ion / LiPo (3.7V/sel)</option>
+            <option value="lead">Lead Acid (2.0V/sel)</option>
+            <option value="nimh">NiMH (1.2V/sel)</option>
+            <option value="custom">Custom (manual)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Jumlah Sel Seri (S)</label>
+          <input type="number" id="batt_cells" min="1" max="24" placeholder="4" onchange="onBattCellsChange()">
+          <div class="hint" id="batt_cells_hint">4S LiFePO4 = 14.6V penuh</div>
+        </div>
+        <div class="form-group">
+          <label>Metode SoC</label>
+          <select id="soc_method">
+            <option value="0">Voltage only</option>
+            <option value="1">Coulomb counting</option>
+            <option value="2" selected>Hybrid (rekomendasi)</option>
+          </select>
+          <div class="hint">Hybrid: voltage untuk init, coulomb untuk running</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>⚡</span> Tegangan &amp; Arus</div>
+      <div class="form-row">
+        <div class="form-group"><label>V Max / Full (V)</label><input type="number" id="v_max" step="0.1" min="1.0" max="100.0" placeholder="14.60"></div>
+        <div class="form-group"><label>V Nominal / 50% (V)</label><input type="number" id="v_nom" step="0.1" min="1.0" max="100.0" placeholder="12.80"><div class="hint">Referensi SoC 50%</div></div>
+        <div class="form-group"><label>V Cutoff / Empty (V)</label><input type="number" id="v_cutoff" step="0.1" min="0.5" max="100.0" placeholder="11.20"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Kapasitas Nominal (mAh)</label><input type="number" id="cap_nom" step="100" min="100" placeholder="2000"></div>
-        <div class="form-group"><label>Shunt Resistor (mΩ)</label><input type="number" id="shunt" step="0.1" min="0.5" max="100" placeholder="5.0"><div class="hint">Default: 5mΩ. Ubah sesuai hardware.</div></div>
+        <div class="form-group"><label>Arus Maks Alert (A)</label><input type="number" id="i_max" step="0.5" min="0.1" max="200.0" placeholder="10.0"></div>
+        <div class="form-group"><label>Kapasitas Nominal (mAh)</label><input type="number" id="cap_nom" step="100" min="100" placeholder="4000"></div>
+        <div class="form-group"><label>Shunt Resistor (mΩ)</label><input type="number" id="shunt" step="0.1" min="0.1" max="100" placeholder="5.0"><div class="hint">Default: 5mΩ (shunt 2512 2W)</div></div>
       </div>
       <div class="toggle-row">
-        <div class="toggle-info"><div class="tl">Auto Cutoff Relay 1</div><div class="ts">Putus relay 1 otomatis saat tegangan &lt; Cutoff</div></div>
+        <div class="toggle-info"><div class="tl">Auto Cutoff Relay 2</div><div class="ts">Putus Relay 2 otomatis saat V &lt; Cutoff</div></div>
         <label class="toggle-sw"><input type="checkbox" id="cutoff_en" checked><span class="toggle-thumb"></span></label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>📊</span> Status Baterai Terukur</div>
+      <div class="form-row">
+        <div class="form-group"><label>Kapasitas Real (mAh)</label><input type="number" id="cap_real" step="10" min="0" placeholder="0" readonly style="opacity:.6"><div class="hint">Diukur otomatis dari siklus</div></div>
+        <div class="form-group"><label>State of Health (%)</label><input type="number" id="soh" step="0.1" min="0" max="100" placeholder="100" readonly style="opacity:.6"><div class="hint">cap_real / cap_nominal</div></div>
       </div>
     </div>
     <div class="btn-row">
@@ -235,11 +275,105 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
     </div>
   </div>
 
+  <!-- ── INA226 Advanced ────────────────────────────────────── -->
+  <div class="section" id="sec-ina">
+    <div class="card">
+      <div class="card-title"><span>⚡</span> INA226 Konfigurasi Advanced</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Averaging Samples</label>
+          <select id="ina_avg">
+            <option value="0">1 sample (cepat, noise tinggi)</option>
+            <option value="1">4 samples</option>
+            <option value="2">16 samples</option>
+            <option value="3" selected>64 samples</option>
+            <option value="4">128 samples</option>
+            <option value="5">256 samples</option>
+            <option value="6">512 samples</option>
+            <option value="7">1024 samples (lambat, halus)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Conversion Time Voltage</label>
+          <select id="ina_vconv">
+            <option value="0">140 µs</option>
+            <option value="1">204 µs</option>
+            <option value="2">332 µs</option>
+            <option value="3">588 µs</option>
+            <option value="4" selected>1.1 ms</option>
+            <option value="5">2.1 ms</option>
+            <option value="6">4.2 ms</option>
+            <option value="7">8.2 ms</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Conversion Time Current</label>
+          <select id="ina_iconv">
+            <option value="0">140 µs</option>
+            <option value="1">204 µs</option>
+            <option value="2">332 µs</option>
+            <option value="3">588 µs</option>
+            <option value="4" selected>1.1 ms</option>
+            <option value="5">2.1 ms</option>
+            <option value="6">4.2 ms</option>
+            <option value="7">8.2 ms</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Operating Mode</label>
+          <select id="ina_mode">
+            <option value="0" selected>Continuous (normal)</option>
+            <option value="1">Triggered (hemat daya)</option>
+            <option value="2">Power Down</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>🎯</span> Kalibrasi INA226</div>
+      <div class="form-row">
+        <div class="form-group"><label>Offset Arus (A)</label><input type="number" id="ina_ioff" step="0.0001" min="-1" max="1" placeholder="0.00000"><div class="hint">Diisi otomatis saat kalibrasi</div></div>
+        <div class="form-group"><label>Offset Tegangan (V)</label><input type="number" id="ina_voff" step="0.001" min="-5" max="5" placeholder="0.000"></div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--dim2);border:1px solid var(--border);margin-top:8px;line-height:1.8">
+        <strong style="color:var(--text)">Kalibrasi offset arus:</strong><br>
+        1. Pastikan tidak ada arus mengalir (buka circuit)<br>
+        2. Klik <em>Kalibrasi Zero Current</em> — offset disimpan otomatis<br><br>
+        <strong style="color:var(--text)">Kalibrasi shunt aktual:</strong><br>
+        1. Alirkan arus, ukur dengan multimeter<br>
+        2. Masukkan nilai multimeter di bawah, klik <em>Kalibrasi Shunt</em>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group"><label>Arus Aktual Multimeter (A)</label><input type="number" id="cal_actual_a" step="0.001" min="0.1" max="20" placeholder="1.000"></div>
+      </div>
+      <div id="ina-cal-status" style="display:none;margin-top:10px;padding:10px;border-radius:7px;font-size:12px;font-family:var(--mono)"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveIna()">Simpan Konfigurasi INA</button>
+      <button class="btn btn-ghost" onclick="calZeroCurrent()">🎯 Kalibrasi Zero Current</button>
+      <button class="btn btn-ghost" onclick="calShunt()">🔧 Kalibrasi Shunt</button>
+    </div>
+  </div>
+
+  <!-- ── Alarm Config ───────────────────────────────────────── -->
+  <div class="section" id="sec-alarm">
+    <div class="card">
+      <div class="card-title"><span>🔔</span> Konfigurasi Alarm per Event</div>
+      <div class="hint" style="margin-bottom:14px">Setiap event bisa dikonfigurasi secara independen. Cooldown mencegah spam notifikasi.</div>
+      <div id="alarm-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveAlarm()">Simpan Konfigurasi Alarm</button>
+    </div>
+  </div>
+
   <!-- ── Relay Schedule ─────────────────────────────────────── -->
   <div class="section" id="sec-relay">
     <div class="card">
       <div class="card-title"><span>⚡</span> Jadwal Relay</div>
-      <div class="hint" style="margin-bottom:12px">day_mask: 0x7F=setiap hari, 0x1F=Senin-Jumat, 0x60=Weekend. Relay 1 juga sebagai cutoff baterai otomatis.</div>
+      <div class="hint" style="margin-bottom:12px">Relay 2 = cutoff baterai otomatis. Jadwal berlaku untuk semua relay. Bit hari: bit0=Min, bit1=Sen, ..., bit6=Sab. Contoh: 0x7E=Senin-Sabtu, 0x7F=setiap hari.</div>
       <div id="relay-list"></div>
     </div>
     <div class="btn-row">
@@ -256,8 +390,30 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
         <label class="toggle-sw"><input type="checkbox" id="mqtt_en"><span class="toggle-thumb"></span></label>
       </div>
       <div class="form-row" style="margin-top:12px">
-        <div class="form-group" style="flex:2"><label>Host / IP</label><input type="text" id="mqtt_host" placeholder="192.168.1.10 atau broker.hivemq.com"></div>
-        <div class="form-group"><label>Port</label><input type="number" id="mqtt_port" placeholder="1883"><div class="hint">TCP:1883 SSL:8883 WSS:443</div></div>
+        <div class="form-group" style="flex:2"><label>Host / IP</label><input type="text" id="mqtt_host" placeholder="mqtt.domain.com"></div>
+        <div class="form-group"><label>Port</label><input type="number" id="mqtt_port" placeholder="1883"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mode Transport</label>
+          <select id="mqtt_mode" onchange="onMqttModeChange(this.value)">
+            <option value="tcp">TCP — plain, port 1883</option>
+            <option value="ssl">SSL/TLS — terenkripsi, port 8883</option>
+            <option value="ws">WS — WebSocket plain, port 80/1883</option>
+            <option value="wss">WSS — WebSocket + TLS, port 443</option>
+          </select>
+          <div class="hint" id="mqtt_mode_hint">Port standar: 1883</div>
+        </div>
+        <div class="form-group"><label>Interval Kirim (detik)</label><input type="number" id="mqtt_intv" min="5" max="3600" placeholder="30"></div>
+        <div class="form-group"><label>QoS</label><select id="mqtt_qos"><option value="0">QoS 0 — Fire &amp; Forget</option><option value="1">QoS 1 — At Least Once</option></select></div>
+      </div>
+      <!-- WS Path — hanya tampil saat mode WS atau WSS -->
+      <div class="form-row" id="ws_path_row" style="display:none">
+        <div class="form-group full">
+          <label>WebSocket Path</label>
+          <input type="text" id="mqtt_wspath" placeholder="/" value="/">
+          <div class="hint">Cloudflare Tunnel: gunakan "/" &nbsp;|&nbsp; Mosquitto WebSocket listener: biasanya "/"&nbsp; atau &nbsp;"/mqtt"</div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Username</label><input type="text" id="mqtt_user" placeholder="kosong jika tidak ada"></div>
@@ -265,8 +421,6 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
       </div>
       <div class="form-row">
         <div class="form-group"><label>Topic Prefix</label><input type="text" id="mqtt_topic" placeholder="battanalyzer"></div>
-        <div class="form-group"><label>Interval Kirim (detik)</label><input type="number" id="mqtt_intv" min="5" max="3600" placeholder="30"></div>
-        <div class="form-group"><label>QoS</label><select id="mqtt_qos"><option value="0">QoS 0 — Fire &amp; Forget</option><option value="1">QoS 1 — At Least Once</option></select></div>
       </div>
       <div class="toggle-row">
         <div class="toggle-info"><div class="tl">Home Assistant MQTT Discovery</div><div class="ts">Publish config otomatis saat connect</div></div>
@@ -342,14 +496,15 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
 <script>
 let _wifiMode='sta',_ipMode='dhcp';
 let _relayData=[];
+let _alarmData=[];
 
-window.onload=()=>{loadSetting();buildRelayUI();};
+window.onload=()=>{loadSetting();buildRelayUI();buildAlarmUI();};
 
-function showSec(id){
+function showSec(id, btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
-  event.target.classList.add('active');
+  if(btn) btn.classList.add('active');
 }
 
 function toast(msg,ok=true){
@@ -388,12 +543,28 @@ function loadSetting(){
     document.getElementById('oled_dur').value=d.oled_dur||3;
     document.getElementById('oled_bright').value=d.oled_bright!==undefined?d.oled_bright:128;
     // Battery
-    document.getElementById('v_max').value=d.v_max||4.2;
-    document.getElementById('v_cutoff').value=d.v_cutoff||3.0;
-    document.getElementById('i_max').value=d.i_max||3.0;
-    document.getElementById('cap_nom').value=d.cap_nom||2000;
+    document.getElementById('batt_type').value=d.batt_type||'lifepo4';
+    document.getElementById('batt_cells').value=d.batt_cells||4;
+    document.getElementById('soc_method').value=d.soc_method!==undefined?d.soc_method:2;
+    document.getElementById('v_max').value=d.v_max||14.6;
+    document.getElementById('v_nom').value=d.v_nom||12.8;
+    document.getElementById('v_cutoff').value=d.v_cutoff||11.2;
+    document.getElementById('i_max').value=d.i_max||10.0;
+    document.getElementById('cap_nom').value=d.cap_nom||4000;
     document.getElementById('shunt').value=d.shunt||5.0;
     document.getElementById('cutoff_en').checked=d.cutoff_en!==false;
+    document.getElementById('cap_real').value=(d.cap_real||0).toFixed(0);
+    document.getElementById('soh').value=(d.soh||100).toFixed(1);
+    onBattTypeChange(d.batt_type||'lifepo4');
+    // INA226
+    document.getElementById('ina_avg').value=d.ina_avg!==undefined?d.ina_avg:3;
+    document.getElementById('ina_vconv').value=d.ina_vconv!==undefined?d.ina_vconv:4;
+    document.getElementById('ina_iconv').value=d.ina_iconv!==undefined?d.ina_iconv:4;
+    document.getElementById('ina_mode').value=d.ina_mode!==undefined?d.ina_mode:0;
+    document.getElementById('ina_ioff').value=(d.ina_ioff||0).toFixed(5);
+    document.getElementById('ina_voff').value=(d.ina_voff||0).toFixed(3);
+    // Alarm
+    if(d.alarms){_alarmData=d.alarms;buildAlarmUI();}
     // MQTT
     document.getElementById('mqtt_en').checked=d.mqtt_en||false;
     document.getElementById('mqtt_host').value=d.mqtt_host||'';
@@ -403,6 +574,10 @@ function loadSetting(){
     document.getElementById('mqtt_intv').value=d.mqtt_intv||30;
     document.getElementById('mqtt_qos').value=d.mqtt_qos||0;
     document.getElementById('mqtt_ha').checked=d.mqtt_ha!==false;
+    const mqttMode=d.mqtt_mode||'tcp';
+    document.getElementById('mqtt_mode').value=mqttMode;
+    document.getElementById('mqtt_wspath').value=d.mqtt_wspath||'/';
+    onMqttModeChange(mqttMode);
     // Env
     document.getElementById('aht_t_off').value=d.aht_t_off||0;
     document.getElementById('aht_h_off').value=d.aht_h_off||0;
@@ -490,8 +665,35 @@ function saveAuth(){
   }).catch(()=>toast('✗ Error',false));
 }
 // ── Battery ────────────────────────────────────────────────────
+// Preset tegangan per tipe × jumlah cell
+const _battPresets={
+  lifepo4:{vmax:3.65,vnom:3.20,vcutoff:2.80},
+  liion:  {vmax:4.20,vnom:3.70,vcutoff:3.00},
+  lead:   {vmax:2.45,vnom:2.00,vcutoff:1.75},
+  nimh:   {vmax:1.45,vnom:1.20,vcutoff:1.00},
+  custom: null
+};
+function onBattTypeChange(type){
+  const cells=parseInt(document.getElementById('batt_cells').value)||1;
+  const p=_battPresets[type];
+  if(p){
+    document.getElementById('v_max').value=(p.vmax*cells).toFixed(2);
+    document.getElementById('v_nom').value=(p.vnom*cells).toFixed(2);
+    document.getElementById('v_cutoff').value=(p.vcutoff*cells).toFixed(2);
+    const hint=document.getElementById('batt_cells_hint');
+    if(hint)hint.textContent=cells+'S '+type.toUpperCase()+' = '+(p.vmax*cells).toFixed(1)+'V penuh';
+  }
+}
+function onBattCellsChange(){
+  onBattTypeChange(document.getElementById('batt_type').value);
+}
 function saveBattery(){
-  post('battery',{v_max:parseFloat(document.getElementById('v_max').value),
+  post('battery',{
+    batt_type:document.getElementById('batt_type').value,
+    batt_cells:parseInt(document.getElementById('batt_cells').value)||4,
+    soc_method:parseInt(document.getElementById('soc_method').value)||2,
+    v_max:parseFloat(document.getElementById('v_max').value),
+    v_nom:parseFloat(document.getElementById('v_nom').value),
     v_cutoff:parseFloat(document.getElementById('v_cutoff').value),
     i_max:parseFloat(document.getElementById('i_max').value),
     cap_nom:parseFloat(document.getElementById('cap_nom').value),
@@ -503,43 +705,134 @@ function resetEnergy(){
   if(!confirm('Reset semua data akumulasi mAh/Wh?'))return;
   post('reset_energy',{}).then(d=>toast(d.ok?'✓ Reset akumulasi':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
 }
-// ── Relay UI ───────────────────────────────────────────────────
-function buildRelayUI(){
-  const el=document.getElementById('relay-list');
+// ── INA226 ─────────────────────────────────────────────────────
+function saveIna(){
+  post('ina',{
+    ina_avg:parseInt(document.getElementById('ina_avg').value)||3,
+    ina_vconv:parseInt(document.getElementById('ina_vconv').value)||4,
+    ina_iconv:parseInt(document.getElementById('ina_iconv').value)||4,
+    ina_mode:parseInt(document.getElementById('ina_mode').value)||0,
+    ina_ioff:parseFloat(document.getElementById('ina_ioff').value)||0,
+    ina_voff:parseFloat(document.getElementById('ina_voff').value)||0})
+  .then(d=>toast(d.ok?'✓ INA tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+function calZeroCurrent(){
+  const st=document.getElementById('ina-cal-status');
+  st.style.display='block';st.style.background='rgba(0,212,255,.08)';st.style.color='var(--accent)';
+  st.textContent='⏳ Kalibrasi... pastikan tidak ada arus mengalir!';
+  fetch('/api/batt/cal_offset',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.ok){
+      st.style.background='rgba(0,255,157,.08)';st.style.color='var(--accent2)';
+      st.textContent='✅ Offset arus: '+d.offset.toFixed(5)+' A';
+      document.getElementById('ina_ioff').value=d.offset.toFixed(5);
+    } else {st.style.color='var(--danger)';st.textContent='✗ Gagal';}
+  }).catch(()=>{st.style.color='var(--danger)';st.textContent='✗ Koneksi error';});
+}
+function calShunt(){
+  const actual=parseFloat(document.getElementById('cal_actual_a').value);
+  if(!actual||actual<0.1){toast('✗ Masukkan arus aktual multimeter (min 0.1A)',false);return;}
+  const st=document.getElementById('ina-cal-status');
+  st.style.display='block';st.style.background='rgba(0,212,255,.08)';st.style.color='var(--accent)';
+  st.textContent='⏳ Kalibrasi shunt...';
+  fetch('/api/batt/cal_shunt',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({actual_a:actual})})
+  .then(r=>r.json()).then(d=>{
+    if(d.ok){
+      st.style.background='rgba(0,255,157,.08)';st.style.color='var(--accent2)';
+      st.textContent='✅ Shunt baru: '+(d.shunt*1000).toFixed(4)+' mΩ';
+      document.getElementById('shunt').value=(d.shunt*1000).toFixed(4);
+    } else {st.style.color='var(--danger)';st.textContent='✗ '+(d.msg||'Gagal');}
+  }).catch(()=>{st.style.color='var(--danger)';st.textContent='✗ Error';});
+}
+// ── Alarm ──────────────────────────────────────────────────────
+const _alarmNames=['Tegangan Rendah','Tegangan Tinggi','Arus Berlebih','Gempa','Suhu Tinggi'];
+const _alarmIcons=['🔋','⚡','⚡','🌍','🌡️'];
+const _buzzPatterns=['OFF','Short (1x)','Sirene (3x)','SOS','Quake (cepat)','Batt Low (panjang)','Overcurr (sedang)','Double','Triple'];
+function buildAlarmUI(){
+  const el=document.getElementById('alarm-list');
   if(!el)return;
-  const days=['S','S','R','K','J','S','M'];
   let html='';
-  for(let i=0;i<4;i++){
-    const r=_relayData[i]||{en:false,onh:0,onm:0,ofh:23,ofm:59,day:127};
-    html+=`<div class="relay-sched">
-      <div>
-        <label>Relay ${i+1}</label>
-        <label class="toggle-sw" style="display:inline-block;margin-top:4px">
-          <input type="checkbox" id="rly${i}_en" ${r.en?'checked':''}><span class="toggle-thumb"></span>
-        </label>
+  for(let i=0;i<5;i++){
+    const a=_alarmData[i]||{en:true,buzz:i+3,tele:true,mqtt:true,cool:5};
+    html+=`<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600">${_alarmIcons[i]} ${_alarmNames[i]}</div>
+        <label class="toggle-sw"><input type="checkbox" id="alm${i}_en" ${a.en?'checked':''}><span class="toggle-thumb"></span></label>
       </div>
-      <div><label>ON</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="rly${i}_onh" value="${r.onh}" min="0" max="23" style="width:60px">
-          <input type="number" id="rly${i}_onm" value="${r.onm}" min="0" max="59" style="width:60px">
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-group">
+          <label>Nada Buzzer</label>
+          <select id="alm${i}_bz">${_buzzPatterns.map((n,j)=>`<option value="${j}"${a.buzz===j?' selected':''}>${j===0?'OFF':n}</option>`).join('')}</select>
         </div>
-      </div>
-      <div><label>OFF</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="rly${i}_ofh" value="${r.ofh}" min="0" max="23" style="width:60px">
-          <input type="number" id="rly${i}_ofm" value="${r.ofm}" min="0" max="59" style="width:60px">
+        <div class="form-group">
+          <label>Cooldown (menit)</label>
+          <input type="number" id="alm${i}_cd" min="0" max="60" value="${a.cool||5}">
+          <div class="hint">0 = tanpa cooldown</div>
         </div>
-      </div>
-      <div><label>Hari</label>
-        <div class="day-btns" id="rly${i}_days">
-          ${days.map((d,j)=>`<button class="day-btn ${(r.day&(1<<j))?'on':''}" onclick="toggleDay(${i},${j},this)">${d}</button>`).join('')}
+        <div class="form-group" style="display:flex;gap:16px;align-items:flex-end;padding-bottom:4px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+            <input type="checkbox" id="alm${i}_tl" ${a.tele?'checked':''}> Telegram
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+            <input type="checkbox" id="alm${i}_mq" ${a.mqtt?'checked':''}> MQTT
+          </label>
         </div>
       </div>
     </div>`;
   }
   el.innerHTML=html;
 }
-function toggleDay(relay,bit,btn){
+function saveAlarm(){
+  const alarms=[];
+  for(let i=0;i<5;i++){
+    alarms.push({
+      en:document.getElementById('alm'+i+'_en').checked,
+      buzz:parseInt(document.getElementById('alm'+i+'_bz').value)||0,
+      tele:document.getElementById('alm'+i+'_tl').checked,
+      mqtt:document.getElementById('alm'+i+'_mq').checked,
+      cool:parseInt(document.getElementById('alm'+i+'_cd').value)||5
+    });
+  }
+  post('alarm',{alarms}).then(d=>toast(d.ok?'✓ Alarm tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+// ── Relay UI ───────────────────────────────────────────────────
+function buildRelayUI(){
+  const el=document.getElementById('relay-list');
+  if(!el)return;
+  const days=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  let html='';
+  for(let i=0;i<4;i++){
+    const r=_relayData[i]||{en:false,onh:0,onm:0,ofh:23,ofm:59,day:127};
+    const label = i===1 ? `Relay ${i+1} (CUTOFF)` : `Relay ${i+1}`;
+    html+=`<div class="relay-sched">
+      <div>
+        <label>${label}</label>
+        <label class="toggle-sw" style="display:inline-block;margin-top:4px">
+          <input type="checkbox" id="rly${i}_en" ${r.en?'checked':''}><span class="toggle-thumb"></span>
+        </label>
+      </div>
+      <div><label>ON (jam:menit)</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="rly${i}_onh" value="${r.onh}" min="0" max="23" style="width:60px">
+          <input type="number" id="rly${i}_onm" value="${r.onm}" min="0" max="59" style="width:60px">
+        </div>
+      </div>
+      <div><label>OFF (jam:menit)</label>
+        <div style="display:flex;gap:4px">
+          <input type="number" id="rly${i}_ofh" value="${r.ofh}" min="0" max="23" style="width:60px">
+          <input type="number" id="rly${i}_ofm" value="${r.ofm}" min="0" max="59" style="width:60px">
+        </div>
+      </div>
+      <div><label>Hari aktif</label>
+        <div class="day-btns" id="rly${i}_days">
+          ${days.map((d,j)=>`<button type="button" class="day-btn ${(r.day&(1<<j))?'on':''}" onclick="toggleDay(this)">${d}</button>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+function toggleDay(btn){
   btn.classList.toggle('on');
 }
 function saveRelay(){
@@ -558,6 +851,18 @@ function saveRelay(){
   post('relay',{relays}).then(d=>toast(d.ok?'✓ Jadwal tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
 }
 // ── MQTT ───────────────────────────────────────────────────────
+function onMqttModeChange(mode){
+  const hints={tcp:'Port standar: 1883',ssl:'Port standar: 8883 (TLS)',ws:'Port standar: 80 atau 1883',wss:'Port standar: 443 (TLS) — Cloudflare Tunnel'};
+  const ports={tcp:1883,ssl:8883,ws:1883,wss:443};
+  document.getElementById('mqtt_mode_hint').textContent=hints[mode]||'';
+  // Auto-isi port jika masih nilai default
+  const portEl=document.getElementById('mqtt_port');
+  const currentPort=parseInt(portEl.value)||0;
+  if([1883,8883,443,80].includes(currentPort)){portEl.value=ports[mode];}
+  // Tampilkan field WS Path hanya saat mode WS atau WSS
+  const isWs=(mode==='ws'||mode==='wss');
+  document.getElementById('ws_path_row').style.display=isWs?'block':'none';
+}
 function saveMqtt(){
   post('mqtt',{mqtt_en:document.getElementById('mqtt_en').checked,
     mqtt_host:document.getElementById('mqtt_host').value.trim(),
@@ -567,7 +872,9 @@ function saveMqtt(){
     mqtt_topic:document.getElementById('mqtt_topic').value.trim()||'battanalyzer',
     mqtt_intv:parseInt(document.getElementById('mqtt_intv').value)||30,
     mqtt_qos:parseInt(document.getElementById('mqtt_qos').value)||0,
-    mqtt_ha:document.getElementById('mqtt_ha').checked})
+    mqtt_ha:document.getElementById('mqtt_ha').checked,
+    mqtt_mode:document.getElementById('mqtt_mode').value||'tcp',
+    mqtt_wspath:document.getElementById('mqtt_wspath').value.trim()||'/'})
   .then(d=>toast(d.ok?'✓ MQTT tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
 }
 // ── Env ────────────────────────────────────────────────────────
