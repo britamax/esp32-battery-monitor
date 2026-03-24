@@ -26,7 +26,7 @@
 #include "OLEDDisplay.h"
 #include "MQTTManager.h"
 
-extern float _runtimeEma;
+
 static AsyncWebServer   _server(80);
 static AsyncWebSocket   _ws("/ws");
 

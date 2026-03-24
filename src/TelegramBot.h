@@ -277,7 +277,8 @@ private:
         // Jika filesystem, hentikan SPIFFS dulu
         if (updateType == U_SPIFFS) LittleFS.end();
 
-        if (!Update.begin(totalSize > 0 ? totalSize : UPDATE_SIZE_UNKNOWN, updateType)) {
+        //if (!Update.begin(totalSize > 0 ? totalSize : UPDATE_SIZE_UNKNOWN, updateType)) {
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, updateType)) {
             logger.debug("OTA", "begin error: %s", Update.errorString());
             http.end();
             return false;
