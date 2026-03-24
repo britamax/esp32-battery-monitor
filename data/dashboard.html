@@ -119,22 +119,29 @@ canvas.spark{width:100%;height:48px;display:block}
     <div class="card c-accent">
       <div class="card-label">TEGANGAN<span class="badge badge-idle" id="batt-badge">IDLE</span></div>
       <div><span class="val-huge" id="batt-v">-.---</span><span class="val-unit">V</span></div>
-      <div class="soc-row"><span>0%</span><span id="soc-pct">--%</span><span>100%</span></div>
+      <div class="soc-row">
+        <span id="soc-vmin" style="color:var(--danger)">-.-V</span>
+        <span id="soc-pct">--%</span>
+        <span id="soc-vmax" style="color:var(--accent2)">-.-V</span>
+      </div>
       <div class="soc-track"><div class="soc-fill" id="soc-fill" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">
+        <span>Cutoff</span><span id="soc-vnom" style="color:var(--dim2)">-.-V (50%)</span><span>Penuh</span>
+      </div>
     </div>
     <div class="card c-green">
       <div class="card-label">ARUS</div>
       <div><span class="val-huge" id="batt-i">-.---</span><span class="val-unit">A</span></div>
       <div class="metrics">
         <div class="metric"><div class="m-label">Daya</div><div class="m-val accent" id="batt-p">-.--</div><div class="m-label">W</div></div>
-        <div class="metric"><div class="m-label">R Internal</div><div class="m-val" id="batt-ri">-.--</div><div class="m-label">mΩ</div></div>
+        <div class="metric"><div class="m-label">Power Factor</div><div class="m-val green" id="batt-pf">-.--</div><div class="m-label">PF</div></div>
       </div>
     </div>
     <div class="card">
       <div class="card-label">STATE OF CHARGE</div>
       <div><span class="val-huge" id="batt-soc">--</span><span class="val-unit">%</span></div>
       <div class="metrics">
-        <div class="metric"><div class="m-label">Runtime Est.</div><div class="m-val green" id="batt-rt">--</div><div class="m-label">menit</div></div>
+        <div class="metric"><div class="m-label">Runtime Est.</div><div class="m-val green" id="batt-rt">--</div><div class="m-label">mnt</div></div>
         <div class="metric"><div class="m-label">Siklus</div><div class="m-val" id="batt-cyc">0</div><div class="m-label">kali</div></div>
       </div>
     </div>
@@ -315,15 +322,28 @@ function updateUI(d){
   document.getElementById('batt-i').textContent=isNaN(i)?'--':(i>=0?'+':'')+i.toFixed(3);
   document.getElementById('batt-i').className='val-huge '+(i>0.05?'green':i<-0.05?'danger':'');
   document.getElementById('batt-p').textContent=fmt(b.p,2);
-  document.getElementById('batt-ri').textContent=fmt(b.ri,1);
-  document.getElementById('batt-ri2').textContent=fmt(b.ri,1);
+  // Power Factor = P / (V × I) — untuk DC baterai mendekati 1.0 saat efisien
+  const pf = (b.v>0&&Math.abs(b.i)>0.01) ? Math.min(1.0, Math.abs(b.p)/(b.v*Math.abs(b.i))) : 0;
+  document.getElementById('batt-pf').textContent=pf>0?pf.toFixed(3):'--';
   document.getElementById('batt-soc').textContent=fmt(b.soc,0);
+  document.getElementById('batt-rt').textContent=b.rt>0?fmt(b.rt,0):'∞';
+  document.getElementById('batt-cyc').textContent=b.cyc||0;
+
+  // SOC bar dengan label voltase dari setting baterai
+  document.getElementById('soc-pct').textContent=fmt(b.soc,0)+'%';
+  if(b.vmin!==undefined){
+    document.getElementById('soc-vmin').textContent=fmt(b.vmin,1)+'V';
+    document.getElementById('soc-vmax').textContent=fmt(b.vmax,1)+'V';
+    document.getElementById('soc-vnom').textContent=fmt(b.vnom,1)+'V (50%)';
+  }
 
   // SoH dan kapasitas
   const soh = parseFloat(b.soh)||100;
   document.getElementById('batt-soh').textContent=fmt(soh,1);
-  document.getElementById('batt-crate').textContent=fmt(b.crate,2);
+  const cr = parseFloat(b.crate)||0;
+  document.getElementById('batt-crate').textContent=fmt(cr,2);
   document.getElementById('batt-capreal').textContent=b.capreal>10?fmt(b.capreal,0):'--';
+  document.getElementById('batt-ri2').textContent=fmt(b.ri,1);
   const sohFill = document.getElementById('soh-fill');
   sohFill.style.width = soh + '%';
   sohFill.className = 'soc-fill' + (soh < 50 ? ' danger' : soh < 75 ? ' warn' : '');

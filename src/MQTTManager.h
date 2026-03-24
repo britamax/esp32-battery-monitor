@@ -266,14 +266,20 @@ private:
 
     // ── Jalankan command berdasarkan topic ────────────────────
     void _dispatchCommand(const String& topic, const String& msg) {
-        // relay/1..4
         for (int i = 0; i < RELAY_COUNT; i++) {
-            if (topic.endsWith("/relay/" + String(i + 1))) {
-                relayMgr.set(i, msg == "ON" || msg == "1" || msg == "true");
+            String rNum = String(i + 1);
+            // Handle /relay/N dan /relay/N/set (dari HA switch entity)
+            if (topic.endsWith("/relay/" + rNum) ||
+                topic.endsWith("/relay/" + rNum + "/set")) {
+                bool on = (msg == "ON" || msg == "1" || msg == "true");
+                relayMgr.set(i, on);
+                // Publish state balik agar HA sync
+                String stateTopic = _baseTopic + "/" + _devName +
+                                    "/relay/" + rNum;
+                _sendPublish(stateTopic, on ? "ON" : "OFF", true);
                 return;
             }
         }
-        // cmd
         if (topic.endsWith("/cmd")) {
             if (msg == "restart")       ESP.restart();
             if (msg == "relay1_toggle") relayMgr.toggle(0);
@@ -366,7 +372,38 @@ private:
               d["availability_topic"]=avtyTopic; pub("seismic", d); }
         }
 
-        Serial.println("[MQTT-WS] HA Discovery published");
+        // ── Relay switch entities (bisa dikontrol dari HA) ────
+        // Topic: {base}/{devName}/relay/{N}  → payload "ON" / "OFF"
+        // Command: {base}/{devName}/relay/{N}/set → kirim "ON"/"OFF"
+        const char* relayNames[] = {
+            "Relay 1 Beban", "Relay 2 Cutoff",
+            "Relay 3 Beban", "Relay 4 Beban"
+        };
+        for (int i = 1; i <= RELAY_COUNT; i++) {
+            String relayBase  = _baseTopic + "/" + _devName + "/relay/" + String(i);
+            JsonDocument d; makeDevice(d);
+            d["name"]           = relayNames[i-1];
+            d["unique_id"]      = devId + "_relay" + String(i);
+            d["state_topic"]    = relayBase;
+            d["command_topic"]  = relayBase + "/set";
+            d["payload_on"]     = "ON";
+            d["payload_off"]    = "OFF";
+            d["state_on"]       = "ON";
+            d["state_off"]      = "OFF";
+            d["availability_topic"] = avtyTopic;
+            d["optimistic"]     = false;
+            String t = "homeassistant/switch/" + devId + "/relay" + String(i) + "/config";
+            String p; serializeJson(d, p);
+            _sendPublish(t, p, true);
+            delay(40);
+        }
+        // Subscribe relay set topics
+        for (int i = 1; i <= RELAY_COUNT; i++) {
+            String setTopic = _baseTopic + "/" + _devName + "/relay/" + String(i) + "/set";
+            _sendSubscribe(setTopic, (uint8_t)_qos);
+        }
+
+        Serial.println("[MQTT-WS] HA Discovery published (sensor + switch)");
     }
 
 public:
@@ -677,11 +714,13 @@ private:
             logger.add(LOG_MQTT, "TCP terhubung ke broker",
                        ts.length() ? ts.c_str() : nullptr);
 
-            // Subscribe command + relay topics
+            // Subscribe command + relay topics + relay/set topics (dari HA)
             String base = _baseTopic + "/" + _devName;
             _client.subscribe((base + "/cmd").c_str(), _qos);
             for (int i = 1; i <= RELAY_COUNT; i++) {
                 _client.subscribe((base + "/relay/" + String(i)).c_str(), _qos);
+                // Subscribe topic /set untuk kontrol dari HA switch entity
+                _client.subscribe((base + "/relay/" + String(i) + "/set").c_str(), _qos);
             }
 
             // HA Discovery
@@ -713,8 +752,16 @@ private:
 
     void _dispatchCommand(const String& topic, const String& msg) {
         for (int i = 0; i < RELAY_COUNT; i++) {
-            if (topic.endsWith("/relay/" + String(i + 1))) {
-                relayMgr.set(i, msg == "ON" || msg == "1" || msg == "true");
+            String rNum = String(i + 1);
+            // Handle baik /relay/N maupun /relay/N/set (dari HA switch)
+            if (topic.endsWith("/relay/" + rNum) ||
+                topic.endsWith("/relay/" + rNum + "/set")) {
+                bool on = (msg == "ON" || msg == "1" || msg == "true");
+                relayMgr.set(i, on);
+                // Publish state balik ke state topic agar HA sync
+                String stateTopic = _baseTopic + "/" + _devName +
+                                    "/relay/" + rNum;
+                _client.publish(stateTopic.c_str(), on ? "ON" : "OFF", true);
                 return;
             }
         }
@@ -806,7 +853,31 @@ private:
               d["availability_topic"]=avtyTopic; pub("seismic", d); }
         }
 
-        Serial.println("[MQTT-TCP] HA Discovery published");
+        // ── Relay switch entities ─────────────────────────────
+        const char* relayNames[] = {
+            "Relay 1 Beban", "Relay 2 Cutoff",
+            "Relay 3 Beban", "Relay 4 Beban"
+        };
+        for (int i = 1; i <= RELAY_COUNT; i++) {
+            String relayBase = _baseTopic + "/" + _devName + "/relay/" + String(i);
+            JsonDocument d; makeDevice(d);
+            d["name"]           = relayNames[i-1];
+            d["unique_id"]      = devId + "_relay" + String(i);
+            d["state_topic"]    = relayBase;
+            d["command_topic"]  = relayBase + "/set";
+            d["payload_on"]     = "ON";
+            d["payload_off"]    = "OFF";
+            d["state_on"]       = "ON";
+            d["state_off"]      = "OFF";
+            d["availability_topic"] = avtyTopic;
+            d["optimistic"]     = false;
+            String t = "homeassistant/switch/" + devId + "/relay" + String(i) + "/config";
+            String p; serializeJson(d, p);
+            _client.publish(t.c_str(), p.c_str(), true);
+            delay(40);
+        }
+
+        Serial.println("[MQTT-TCP] HA Discovery published (sensor + switch)");
     }
 
     void _publishData() {

@@ -287,8 +287,29 @@ public:
     }
 
     // ── Log mask ───────────────────────────────────────────────
-    uint32_t getLogMask()         { return _p.getUInt(NVS_LOG_MASK, LOG_MASK_DEFAULT); }
+    uint32_t getLogMask()           { return _p.getUInt(NVS_LOG_MASK, LOG_MASK_DEFAULT); }
     void     setLogMask(uint32_t m) { _p.putUInt(NVS_LOG_MASK, m); }
+
+    // ── Daily Reset & Report ───────────────────────────────────
+    bool getDailyResetEn()   { return _p.getBool(NVS_DAILY_RESET_EN,  false); }
+    bool getDailyReportEn()  { return _p.getBool(NVS_DAILY_REPORT_EN, false); }
+    int  getDailyTimeMode()  { return _p.getInt(NVS_DAILY_TIME_MODE,  0); }    // 0=jam tetap, 1=sunrise
+    int  getDailyHour()      { return _p.getInt(NVS_DAILY_HOUR,       6); }
+    int  getDailyMin()       { return _p.getInt(NVS_DAILY_MIN,        0); }
+
+    void setDailyResetEn(bool v)   { _p.putBool(NVS_DAILY_RESET_EN,  v); }
+    void setDailyReportEn(bool v)  { _p.putBool(NVS_DAILY_REPORT_EN, v); }
+    void setDailyTimeMode(int v)   { _p.putInt(NVS_DAILY_TIME_MODE,  v); }
+    void setDailyHour(int v)       { _p.putInt(NVS_DAILY_HOUR,       v); }
+    void setDailyMin(int v)        { _p.putInt(NVS_DAILY_MIN,        v); }
+
+    // ── Relay Trigger & Quake Duration ────────────────────────
+    // trigger: 0=manual, 1=jadwal, 2=gempa
+    int  getRelayTrigger(int n)  { char k[14]; snprintf(k,sizeof(k),"rly%d_trig",n); return _p.getInt(k,0); }
+    int  getRelayQuakeDur(int n) { char k[14]; snprintf(k,sizeof(k),"rly%d_qdur",n); return _p.getInt(k,5); }
+    void setRelayTrigger(int n, int t)  { char k[14]; snprintf(k,sizeof(k),"rly%d_trig",n); _p.putInt(k,t); }
+    void setRelayQuakeDur(int n, int d) { char k[14]; snprintf(k,sizeof(k),"rly%d_qdur",n); _p.putInt(k,d); }
+
     void factoryReset()    { _p.clear(); }
     void clearWifiOnly() {
         _p.remove(NVS_WIFI_SSID); _p.remove(NVS_WIFI_PASS);

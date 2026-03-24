@@ -245,3 +245,14 @@
 #define LOG_MASK_ALL      0x1FF
 #define LOG_MASK_DEFAULT  0x0FF
 #define NVS_LOG_MASK      "log_mask"
+
+// ── Daily Report & Reset ──────────────────────────────────────
+#define NVS_DAILY_RESET_EN  "daily_rst_en"  // bool: reset akumulasi tiap hari
+#define NVS_DAILY_REPORT_EN "daily_rpt_en"  // bool: kirim laporan via Telegram
+#define NVS_DAILY_TIME_MODE "daily_tm_mode" // 0=jam tetap, 1=sunrise
+#define NVS_DAILY_HOUR      "daily_hour"    // jam reset jika mode=0 (default 6)
+#define NVS_DAILY_MIN       "daily_min"     // menit reset jika mode=0 (default 0)
+
+// ── Relay Quake Trigger ───────────────────────────────────────
+// Per relay: trigger mode 0=manual, 1=jadwal, 2=gempa
+// rly1..4_trig, rly1..4_qdur (durasi gempa detik)

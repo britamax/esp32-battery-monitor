@@ -26,6 +26,7 @@
 #include "OLEDDisplay.h"
 #include "MQTTManager.h"
 
+extern float _runtimeEma;
 static AsyncWebServer   _server(80);
 static AsyncWebSocket   _ws("/ws");
 
@@ -100,8 +101,12 @@ private:
         b["crate"]= round(battMon.cRate * 100) / 100.0;
         b["capreal"] = round(battMon.capReal);
         b["st"]   = battMon.status;
+        // Voltase referensi untuk SOC bar label
+        b["vmin"] = nvs.getVCutoff();
+        b["vmax"] = nvs.getVMax();
+        b["vnom"] = nvs.getVNom();
         b["ri"]   = round(battMon.internalR * 10) / 10.0;
-        b["rt"]   = round(battMon.runtimeMin * 10) / 10.0;
+        b["rt"]   = round(([](){extern float _runtimeEma; return _runtimeEma;})() * 10) / 10.0;
         b["mahc"] = round(battMon.mahCharge * 10)    / 10.0;
         b["mahd"] = round(battMon.mahDischarge * 10) / 10.0;
         b["whc"]  = round(battMon.whCharge * 100)    / 100.0;
@@ -450,17 +455,25 @@ private:
             doc["oled_scroll"] = nvs.getOledScroll();
             doc["oled_dur"]    = nvs.getOledDur() / 1000;
             doc["oled_bright"] = nvs.getOledBright();
-            // Relay schedule
+            // Relay schedule + trigger
             JsonArray relays = doc["relays"].to<JsonArray>();
             for (int i = 1; i <= RELAY_COUNT; i++) {
                 JsonObject ro = relays.add<JsonObject>();
-                ro["en"]  = nvs.getRelayEn(i);
-                ro["onh"] = nvs.getRelayOnH(i);
-                ro["onm"] = nvs.getRelayOnM(i);
-                ro["ofh"] = nvs.getRelayOffH(i);
-                ro["ofm"] = nvs.getRelayOffM(i);
-                ro["day"] = nvs.getRelayDayMask(i);
+                ro["en"]    = nvs.getRelayEn(i);
+                ro["onh"]   = nvs.getRelayOnH(i);
+                ro["onm"]   = nvs.getRelayOnM(i);
+                ro["ofh"]   = nvs.getRelayOffH(i);
+                ro["ofm"]   = nvs.getRelayOffM(i);
+                ro["day"]   = nvs.getRelayDayMask(i);
+                ro["trig"]  = nvs.getRelayTrigger(i);   // 0=manual,1=jadwal,2=gempa
+                ro["qdur"]  = nvs.getRelayQuakeDur(i);  // detik
             }
+            // Daily Reset & Report
+            doc["daily_reset_en"]  = nvs.getDailyResetEn();
+            doc["daily_report_en"] = nvs.getDailyReportEn();
+            doc["daily_tm_mode"]   = nvs.getDailyTimeMode();
+            doc["daily_hour"]      = nvs.getDailyHour();
+            doc["daily_min"]       = nvs.getDailyMin();
             // Loc
             doc["loc_name"] = nvs.getLocName();
             doc["loc_lat"]  = nvs.getLocLat();
@@ -591,7 +604,6 @@ private:
                         req->send(200, "application/json", "{\"ok\":true}");
 
                     } else if (type == "relay") {
-                        // Simpan jadwal relay
                         JsonArray arr = body["relays"].as<JsonArray>();
                         for (int i = 0; i < (int)arr.size() && i < RELAY_COUNT; i++) {
                             JsonObject ro = arr[i].as<JsonObject>();
@@ -600,7 +612,17 @@ private:
                                 ro["onh"].as<int>(), ro["onm"].as<int>(),
                                 ro["ofh"].as<int>(), ro["ofm"].as<int>(),
                                 ro["day"].as<int>());
+                            nvs.setRelayTrigger(i + 1, ro["trig"].as<int>());
+                            nvs.setRelayQuakeDur(i + 1, ro["qdur"].as<int>());
                         }
+                        req->send(200, "application/json", "{\"ok\":true}");
+
+                    } else if (type == "daily") {
+                        nvs.setDailyResetEn(body["daily_reset_en"].as<bool>());
+                        nvs.setDailyReportEn(body["daily_report_en"].as<bool>());
+                        nvs.setDailyTimeMode(body["daily_tm_mode"].as<int>());
+                        nvs.setDailyHour(body["daily_hour"].as<int>());
+                        nvs.setDailyMin(body["daily_min"].as<int>());
                         req->send(200, "application/json", "{\"ok\":true}");
 
                     } else if (type == "location") {

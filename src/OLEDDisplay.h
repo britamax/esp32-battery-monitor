@@ -24,7 +24,7 @@ public:
     int  pageDurMs   = 3000;
 
     struct { String mode, ssid, ip; bool wifiOk=false; int rssi=0; } wifi;
-    struct { float voltage=0, current=0, soc=0, soh=100, internalR=0;
+    struct { float voltage=0, current=0, soc=0, soh=100, internalR=0, cRate=0;
              const char* status="IDLE"; } batt;
     struct { float mahChg=0, mahDis=0, whChg=0, whDis=0; int cycles=0; } energy;
     struct { float temp=0, humidity=0, pressure=0; const char* weather="---"; } env;
@@ -181,21 +181,25 @@ private:
     void _pageBatt() {
         _oled.clearDisplay(); _oled.setTextSize(1); _oled.setTextColor(SSD1306_WHITE);
         _header("Battery");
+        // Baris 1: Voltase + status
         _oled.setCursor(0, 13);
-        _oled.printf("V: %6.3f V   %s", batt.voltage, batt.status);
+        _oled.printf("V:%6.3fV  [%s]", batt.voltage, batt.status);
+        // Baris 2: Arus
         _oled.setCursor(0, 24);
-        _oled.printf("I: %+6.3f A", batt.current);
+        _oled.printf("I:%+6.3fA  P:%.2fW", batt.current,
+            batt.voltage * fabsf(batt.current));
+        // Baris 3: SoC + SoH
         _oled.setCursor(0, 35);
-        _oled.printf("SoC: %5.1f%%  SoH:%4.0f%%", batt.soc, batt.soh);
-        // Bar SoC
-        _bar(0, 46, 128, 8, batt.soc);
-        _oled.setCursor(0, 56);
-        _oled.printf("Ri: %.1f mO  Cyc:%d",
-            batt.internalR, energy.cycles);
+        _oled.printf("SoC:%5.1f%%  SoH:%.0f%%", batt.soc, batt.soh);
+        // Bar SoC (y=44, h=7)
+        _bar(0, 44, 128, 7, batt.soc);
+        // Baris 5: Ri + Siklus
+        _oled.setCursor(0, 54);
+        _oled.printf("Ri:%.0fmO  Cyc:%d", batt.internalR, energy.cycles);
         _oled.display();
     }
 
-    // ── Hal.2: Power + Daya ─────────────────────────────────────
+    // ── Hal.2: Power ────────────────────────────────────────────
     void _pagePower() {
         _oled.clearDisplay(); _oled.setTextSize(1); _oled.setTextColor(SSD1306_WHITE);
         _header("Power");
@@ -203,11 +207,10 @@ private:
         float pOut = batt.current < 0 ? batt.voltage * (-batt.current) : 0;
         _oled.setCursor(0, 13); _oled.printf("IN :  %7.3f W", pIn);
         _oled.setCursor(0, 24); _oled.printf("OUT:  %7.3f W", pOut);
-        _oled.setCursor(0, 35); _oled.printf("NET:  %+7.3f W", batt.voltage * batt.current);
-        _oled.setCursor(0, 46); _oled.printf("V: %.3fV  I: %+.3fA",
-            batt.voltage, batt.current);
-        _hline(55);
-        _oled.setCursor(0, 57); _oled.printf("SoC: %.1f%%", batt.soc);
+        _oled.setCursor(0, 35); _oled.printf("NET:  %+7.3f W",
+            batt.voltage * batt.current);
+        _oled.setCursor(0, 46); _oled.printf("SoC:%.1f%%  C:%.2fC",
+            batt.soc, batt.cRate);
         _oled.display();
     }
 

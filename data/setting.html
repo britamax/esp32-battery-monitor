@@ -372,12 +372,42 @@ input:checked+.toggle-thumb:before{transform:translateX(20px);background:var(--a
   <!-- ── Relay Schedule ─────────────────────────────────────── -->
   <div class="section" id="sec-relay">
     <div class="card">
-      <div class="card-title"><span>⚡</span> Jadwal Relay</div>
-      <div class="hint" style="margin-bottom:12px">Relay 2 = cutoff baterai otomatis. Jadwal berlaku untuk semua relay. Bit hari: bit0=Min, bit1=Sen, ..., bit6=Sab. Contoh: 0x7E=Senin-Sabtu, 0x7F=setiap hari.</div>
+      <div class="card-title"><span>🔌</span> Jadwal &amp; Trigger Relay</div>
+      <div class="hint" style="margin-bottom:12px">Relay 2 = cutoff baterai (tidak bisa diubah trigger). Trigger: <b>Manual</b> = kontrol manual saja, <b>Jadwal</b> = otomatis jam, <b>Gempa</b> = aktif saat gempa terdeteksi.</div>
       <div id="relay-list"></div>
     </div>
+    <div class="card">
+      <div class="card-title"><span>🌅</span> Reset &amp; Laporan Harian</div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Reset Akumulasi Tiap Hari</div><div class="ts">Reset mAh/Wh charge &amp; discharge otomatis</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="daily_reset_en"><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="tl">Laporan Harian via Telegram</div><div class="ts">Kirim ringkasan data sebelum reset</div></div>
+        <label class="toggle-sw"><input type="checkbox" id="daily_report_en"><span class="toggle-thumb"></span></label>
+      </div>
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group">
+          <label>Waktu Reset</label>
+          <select id="daily_tm_mode" onchange="onDailyModeChange(parseInt(this.value))">
+            <option value="0">Jam tetap (manual)</option>
+            <option value="1" selected>Sunrise (otomatis dari GPS)</option>
+          </select>
+          <div class="hint" id="daily_mode_hint">Membutuhkan lokasi GPS tersimpan di Seismic → GPS</div>
+        </div>
+        <div class="form-group" id="daily_time_row">
+          <label>Jam Reset</label>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="daily_hour" min="0" max="23" placeholder="6" style="width:70px">
+            <input type="number" id="daily_min"  min="0" max="59" placeholder="0" style="width:70px">
+          </div>
+          <div class="hint">Format 24 jam (jam : menit)</div>
+        </div>
+      </div>
+    </div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="saveRelay()">Simpan Jadwal Relay</button>
+      <button class="btn btn-primary" onclick="saveRelay()">Simpan Relay</button>
+      <button class="btn btn-primary" onclick="saveDaily()">Simpan Pengaturan Harian</button>
     </div>
   </div>
 
@@ -592,6 +622,13 @@ function loadSetting(){
     document.getElementById('tele_cid').value=d.tele_cid||'';
     // Relay
     if(d.relays){_relayData=d.relays;buildRelayUI();}
+    // Daily Reset & Report
+    document.getElementById('daily_reset_en').checked=d.daily_reset_en||false;
+    document.getElementById('daily_report_en').checked=d.daily_report_en||false;
+    document.getElementById('daily_tm_mode').value=d.daily_tm_mode!==undefined?d.daily_tm_mode:1;
+    document.getElementById('daily_hour').value=d.daily_hour!==undefined?d.daily_hour:6;
+    document.getElementById('daily_min').value=d.daily_min!==undefined?d.daily_min:0;
+    onDailyModeChange(d.daily_tm_mode||1);
   }).catch(()=>{});
 }
 
@@ -802,35 +839,54 @@ function buildRelayUI(){
   const days=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
   let html='';
   for(let i=0;i<4;i++){
-    const r=_relayData[i]||{en:false,onh:0,onm:0,ofh:23,ofm:59,day:127};
-    const label = i===1 ? `Relay ${i+1} (CUTOFF)` : `Relay ${i+1}`;
-    html+=`<div class="relay-sched">
-      <div>
-        <label>${label}</label>
-        <label class="toggle-sw" style="display:inline-block;margin-top:4px">
-          <input type="checkbox" id="rly${i}_en" ${r.en?'checked':''}><span class="toggle-thumb"></span>
-        </label>
+    const r=_relayData[i]||{en:false,onh:0,onm:0,ofh:23,ofm:59,day:127,trig:0,qdur:5};
+    const isCutoff = i===1;
+    const label = isCutoff ? 'Relay 2 <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(255,77,109,.15);color:var(--danger)">CUTOFF</span>' : `Relay ${i+1}`;
+    const trig = r.trig||0;
+
+    html+=`<div style="padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label class="toggle-sw"><input type="checkbox" id="rly${i}_en" ${r.en?'checked':''}${isCutoff?' disabled':''}><span class="toggle-thumb"></span></label>
+        <span style="font-size:13px;font-weight:600">${label}</span>
+        ${!isCutoff?`<select id="rly${i}_trig" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);margin-left:auto" onchange="onTrigChange(${i},this.value)">
+          <option value="0"${trig===0?' selected':''}>🖐 Manual</option>
+          <option value="1"${trig===1?' selected':''}>🕐 Jadwal</option>
+          <option value="2"${trig===2?' selected':''}>🌍 Gempa</option>
+        </select>`:'<span style="margin-left:auto;font-size:10px;color:var(--dim2)">Auto cutoff</span>'}
       </div>
-      <div><label>ON (jam:menit)</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="rly${i}_onh" value="${r.onh}" min="0" max="23" style="width:60px">
-          <input type="number" id="rly${i}_onm" value="${r.onm}" min="0" max="59" style="width:60px">
+      <div id="rly${i}_sched_row" style="display:${trig===1||isCutoff?'flex':'none'};gap:16px;flex-wrap:wrap;margin-bottom:8px">
+        <div><label style="font-size:9px;color:var(--dim2);letter-spacing:1px">ON (jam:mnt)</label>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <input type="number" id="rly${i}_onh" value="${r.onh}" min="0" max="23" style="width:56px">
+            <input type="number" id="rly${i}_onm" value="${r.onm}" min="0" max="59" style="width:56px">
+          </div>
+        </div>
+        <div><label style="font-size:9px;color:var(--dim2);letter-spacing:1px">OFF (jam:mnt)</label>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <input type="number" id="rly${i}_ofh" value="${r.ofh}" min="0" max="23" style="width:56px">
+            <input type="number" id="rly${i}_ofm" value="${r.ofm}" min="0" max="59" style="width:56px">
+          </div>
+        </div>
+        <div><label style="font-size:9px;color:var(--dim2);letter-spacing:1px">HARI AKTIF</label>
+          <div class="day-btns" id="rly${i}_days" style="margin-top:4px">
+            ${days.map((d,j)=>`<button type="button" class="day-btn ${(r.day&(1<<j))?'on':''}" onclick="toggleDay(this)">${d}</button>`).join('')}
+          </div>
         </div>
       </div>
-      <div><label>OFF (jam:menit)</label>
-        <div style="display:flex;gap:4px">
-          <input type="number" id="rly${i}_ofh" value="${r.ofh}" min="0" max="23" style="width:60px">
-          <input type="number" id="rly${i}_ofm" value="${r.ofm}" min="0" max="59" style="width:60px">
-        </div>
-      </div>
-      <div><label>Hari aktif</label>
-        <div class="day-btns" id="rly${i}_days">
-          ${days.map((d,j)=>`<button type="button" class="day-btn ${(r.day&(1<<j))?'on':''}" onclick="toggleDay(this)">${d}</button>`).join('')}
-        </div>
+      <div id="rly${i}_quake_row" style="display:${trig===2?'flex':'none'};align-items:center;gap:10px">
+        <label style="font-size:11px;color:var(--dim2)">Durasi aktif saat gempa:</label>
+        <input type="number" id="rly${i}_qdur" value="${r.qdur||5}" min="1" max="300" style="width:70px">
+        <span style="font-size:11px;color:var(--dim2)">detik</span>
+        <span style="font-size:10px;color:var(--dim);margin-left:4px">(diperpanjang jika gempa berlanjut)</span>
       </div>
     </div>`;
   }
   el.innerHTML=html;
+}
+function onTrigChange(idx,val){
+  const v=parseInt(val);
+  document.getElementById('rly'+idx+'_sched_row').style.display=v===1?'flex':'none';
+  document.getElementById('rly'+idx+'_quake_row').style.display=v===2?'flex':'none';
 }
 function toggleDay(btn){
   btn.classList.toggle('on');
@@ -841,14 +897,36 @@ function saveRelay(){
     let day=0;
     const dayBtns=document.querySelectorAll('#rly'+i+'_days .day-btn');
     dayBtns.forEach((b,j)=>{if(b.classList.contains('on'))day|=(1<<j);});
-    relays.push({en:document.getElementById('rly'+i+'_en').checked,
-      onh:parseInt(document.getElementById('rly'+i+'_onh').value)||0,
-      onm:parseInt(document.getElementById('rly'+i+'_onm').value)||0,
-      ofh:parseInt(document.getElementById('rly'+i+'_ofh').value)||23,
-      ofm:parseInt(document.getElementById('rly'+i+'_ofm').value)||59,
-      day});
+    const trigEl=document.getElementById('rly'+i+'_trig');
+    const trig=trigEl?parseInt(trigEl.value)||0:0;
+    const qdurEl=document.getElementById('rly'+i+'_qdur');
+    relays.push({
+      en: document.getElementById('rly'+i+'_en').checked,
+      onh:parseInt(document.getElementById('rly'+i+'_onh')?.value)||0,
+      onm:parseInt(document.getElementById('rly'+i+'_onm')?.value)||0,
+      ofh:parseInt(document.getElementById('rly'+i+'_ofh')?.value)||23,
+      ofm:parseInt(document.getElementById('rly'+i+'_ofm')?.value)||59,
+      day, trig,
+      qdur:qdurEl?parseInt(qdurEl.value)||5:5
+    });
   }
-  post('relay',{relays}).then(d=>toast(d.ok?'✓ Jadwal tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+  post('relay',{relays}).then(d=>toast(d.ok?'✓ Relay tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
+}
+function onDailyModeChange(v){
+  const isSunrise=v===1;
+  const row=document.getElementById('daily_time_row');
+  const hint=document.getElementById('daily_mode_hint');
+  if(row) row.style.display=isSunrise?'none':'block';
+  if(hint) hint.textContent=isSunrise?'Sunrise dihitung otomatis dari koordinat GPS tersimpan':'Reset tepat pada jam yang ditentukan';
+}
+function saveDaily(){
+  post('daily',{
+    daily_reset_en:document.getElementById('daily_reset_en').checked,
+    daily_report_en:document.getElementById('daily_report_en').checked,
+    daily_tm_mode:parseInt(document.getElementById('daily_tm_mode').value)||1,
+    daily_hour:parseInt(document.getElementById('daily_hour').value)||6,
+    daily_min:parseInt(document.getElementById('daily_min').value)||0
+  }).then(d=>toast(d.ok?'✓ Pengaturan harian tersimpan':'✗ Gagal',d.ok)).catch(()=>toast('✗ Error',false));
 }
 // ── MQTT ───────────────────────────────────────────────────────
 function onMqttModeChange(mode){

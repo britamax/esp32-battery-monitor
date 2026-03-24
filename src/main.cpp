@@ -54,6 +54,34 @@ volatile bool seismicCalReq = false;
 bool          mqttReloadReq = false;
 bool          ntpReloadReq  = false;
 
+// ── Daily reset tracking ──────────────────────────────────────
+static int  _lastDailyResetHour = -1;  // jam terakhir reset harian
+
+// ── Relay quake trigger — timer per relay ─────────────────────
+// quakeRelayUntil[i] = millis() saat relay quake harus dimatikan
+static unsigned long _quakeRelayUntil[RELAY_COUNT] = {0};
+
+// ── Runtime EMA — filter fluktuasi ───────────────────────────
+float _runtimeEma = 0.0;
+
+// ── Sunrise calculator (algoritma sederhana Spencer) ──────────
+// Mengembalikan jam sunrise lokal (desimal, mis. 6.25 = 06:15)
+static float _calcSunriseHour(double lat, double lng, int utcOffset) {
+    struct tm ti;
+    if (!getLocalTime(&ti)) return 6.0f;
+    int dayOfYear = ti.tm_yday + 1;
+    // Perkiraan deklinasi matahari
+    float decl = -23.45f * cosf((360.0f / 365.0f * (dayOfYear + 10)) * DEG_TO_RAD);
+    float latRad = lat * DEG_TO_RAD;
+    float declRad = decl * DEG_TO_RAD;
+    float cosHA = -tanf(latRad) * tanf(declRad);
+    if (cosHA > 1.0f) return 12.0f;   // tidak ada sunrise (kutub malam)
+    if (cosHA < -1.0f) return 0.0f;   // tidak ada sunset (tengah malam)
+    float hourAngle = acosf(cosHA) * RAD_TO_DEG;
+    float sunriseUTC = 12.0f - hourAngle / 15.0f;
+    return sunriseUTC + utcOffset;
+}
+
 // ── FreeRTOS Tasks ────────────────────────────────────────────
 // ESP32-C3 = single-core RISC-V, semua task di Core 0
 
@@ -135,6 +163,25 @@ void taskAlert(void* param) {
                 "GEMPA", "mag=" + String(seismic.magnitude, 4),
                 "GEMPA", String(detail),
                 logbuf);
+
+            // ── Aktifkan relay yang di-trigger oleh gempa ──────
+            for (int i = 0; i < RELAY_COUNT; i++) {
+                if (i == IDX_RELAY_CUTOFF) continue;   // skip cutoff
+                int relayNum = i + 1;
+                if (nvs.getRelayTrigger(relayNum) == 2) {  // 2 = gempa
+                    int durSec = nvs.getRelayQuakeDur(relayNum);
+                    if (durSec <= 0) durSec = 5;
+                    unsigned long until = millis() + (unsigned long)durSec * 1000UL;
+                    // Perpanjang timer jika sudah aktif
+                    if (until > _quakeRelayUntil[i])
+                        _quakeRelayUntil[i] = until;
+                    if (!relayMgr.state[i]) {
+                        relayMgr.set(i, true);
+                        logger.addf(LOG_ALERT, nullptr,
+                            "Relay %d ON by gempa (dur=%ds)", relayNum, durSec);
+                    }
+                }
+            }
         }
 
         float vbat = battMon.voltage;
@@ -369,6 +416,14 @@ void loop() {
         envSensor.read();
         seismic.read();
 
+        // Runtime EMA — filter fluktuasi
+        if (battMon.runtimeMin > 0.0f) {
+            if (_runtimeEma == 0.0f) _runtimeEma = battMon.runtimeMin;
+            else _runtimeEma = _runtimeEma * 0.95f + battMon.runtimeMin * 0.05f;
+        } else {
+            _runtimeEma = 0.0f;
+        }
+
         // Init SoC dari voltage pada pembacaan pertama
         static bool _socInitDone = false;
         if (!_socInitDone && battMon.voltage > 0.5f) {
@@ -376,11 +431,76 @@ void loop() {
             _socInitDone = true;
         }
 
-        // Cek pergantian hari untuk history
+        // ── Quake relay timer — matikan saat durasi habis ──────
+        for (int i = 0; i < RELAY_COUNT; i++) {
+            if (_quakeRelayUntil[i] > 0 && millis() >= _quakeRelayUntil[i]) {
+                _quakeRelayUntil[i] = 0;
+                if (relayMgr.state[i] &&
+                    nvs.getRelayTrigger(i + 1) == 2) {
+                    relayMgr.set(i, false);
+                    logger.addf(LOG_ALERT, nullptr,
+                        "Relay %d OFF — timer gempa selesai", i + 1);
+                }
+            }
+        }
+
+        // ── Cek daily reset & laporan ─────────────────────────
         if (ntpMgr.synced) {
             struct tm ti;
             if (getLocalTime(&ti)) {
-                // unix day = seconds/86400
+                // Hitung jam reset target
+                int targetHour = nvs.getDailyHour();
+                int targetMin  = nvs.getDailyMin();
+                if (nvs.getDailyTimeMode() == 1 && nvs.isLocSet()) {
+                    // Mode sunrise
+                    float sr = _calcSunriseHour(nvs.getLocLat(),
+                                                nvs.getLocLng(),
+                                                nvs.getNtpOffset());
+                    targetHour = (int)sr;
+                    targetMin  = (int)((sr - targetHour) * 60.0f);
+                }
+
+                bool isResetTime = (ti.tm_hour == targetHour &&
+                                    ti.tm_min  == targetMin &&
+                                    ti.tm_hour != _lastDailyResetHour);
+
+                if (isResetTime) {
+                    _lastDailyResetHour = ti.tm_hour;
+
+                    // Kirim laporan sebelum reset
+                    if (nvs.getDailyReportEn()) {
+                        char rpt[400];
+                        snprintf(rpt, sizeof(rpt),
+                            "📊 *Laporan Harian*\n"
+                            "_%02d/%02d/%04d %02d:%02d_\n\n"
+                            "🔋 Charge: `%.0f mAh` / `%.2f Wh`\n"
+                            "🔋 Discharge: `%.0f mAh` / `%.2f Wh`\n"
+                            "⚡ Net: `%.2f Wh`\n"
+                            "🔄 Siklus: `%d`\n"
+                            "📈 SoC: `%.0f%%`  SoH: `%.0f%%`\n"
+                            "🌡️ Suhu: `%.1f°C`  RH: `%.0f%%`",
+                            ti.tm_mday, ti.tm_mon+1, ti.tm_year+1900,
+                            ti.tm_hour, ti.tm_min,
+                            battMon.mahCharge, battMon.whCharge,
+                            battMon.mahDischarge, battMon.whDischarge,
+                            battMon.whCharge - battMon.whDischarge,
+                            battMon.cycleCount,
+                            battMon.soc, battMon.soh,
+                            envSensor.temperature, envSensor.humidity);
+                        teleBot.sendNotif(String(rpt));
+                        logger.add(LOG_BATT, "Laporan harian terkirim", nullptr);
+                    }
+
+                    // Reset akumulasi harian
+                    if (nvs.getDailyResetEn()) {
+                        battMon.mahCharge = battMon.mahDischarge = 0.0f;
+                        battMon.whCharge  = battMon.whDischarge  = 0.0f;
+                        nvs.resetEnergy();
+                        logger.add(LOG_BATT, "Reset akumulasi harian otomatis", nullptr);
+                    }
+                }
+
+                // Cek pergantian hari untuk history
                 uint32_t today = (uint32_t)(mktime(&ti) / 86400);
                 if (battMon.histLastDay == 0) {
                     battMon.histLastDay = today;
@@ -398,6 +518,7 @@ void loop() {
         oled.batt.soc        = battMon.soc;
         oled.batt.soh        = battMon.soh;
         oled.batt.internalR  = battMon.internalR;
+        oled.batt.cRate      = battMon.cRate;
         oled.batt.status     = battMon.status;
         oled.energy.mahChg   = battMon.mahCharge;
         oled.energy.mahDis   = battMon.mahDischarge;
